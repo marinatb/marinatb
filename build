@@ -1,0 +1,26 @@
+#!/bin/bash
+
+ARGS="-ti --rm --hostname=builder --name=builder"
+CMAKE="cmake"
+CMAKE_ARGS=".. -G Ninja"
+CONTAINER="builder"
+RUN="docker run"
+
+case $1 in
+  "test")
+    case $2 in
+      "cmake")
+        mkdir -p test/build
+        $RUN \
+          -v `cd test; pwd`:/code \
+          --workdir=/code/build \
+          --entrypoint=$CMAKE $CONTAINER $CMAKE_ARGS
+      ;;
+      "ninja")
+        $RUN \
+          -v `cd test; pwd`:/code \
+          --workdir=/code/build \
+          --entrypoint=$NINJA $CONTAINER
+    esac
+  ;;
+esac
