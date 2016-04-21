@@ -16,8 +16,17 @@ RUN apt-get update && apt-get install -y \
   git \
   curl \
   libssl-dev \
-  libboost-dev
+  libboost-dev \
+  sudo
 
 RUN mkdir /build
+
+ADD 3p /3p
+
+RUN cd /3p/proxygen/proxygen && \
+  ./deps.sh && \
+  ./reinstall.sh
+  
+  
 
 ENTRYPOINT ["ninja"]

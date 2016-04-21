@@ -11,16 +11,21 @@ case $1 in
     case $2 in
       "cmake")
         mkdir -p test/build
-        $RUN \
+        $RUN $ARGS \
           -v `cd test; pwd`:/code \
           --workdir=/code/build \
           --entrypoint=$CMAKE $CONTAINER $CMAKE_ARGS
       ;;
       "ninja")
-        $RUN \
+        $RUN $ARGS\
           -v `cd test; pwd`:/code \
           --workdir=/code/build \
           --entrypoint=$NINJA $CONTAINER
     esac
+  ;;
+  "run")
+    $RUN $ARGS --entrypoint=bash $CONTAINER
+  ;;
+  *) echo "usage build <component> [cmake|ninja|test]"
   ;;
 esac
