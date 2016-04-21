@@ -1,0 +1,18 @@
+[submodule "test"]
+	path = test
+	url = git@github.com:marinatb/test
+[submodule "api"]
+	path = api
+	url = git@github.com:marinatb/api
+[submodule "internal"]
+	path = internal
+	url = git@github.com:marinatb/internal
+[submodule "db"]
+	path = db
+	url = git@github.com:marinatb/db
+[submodule "node"]
+	path = node
+	url = git@github.com:marinatb/node
+[submodule "client"]
+	path = client
+	url = git@github.com:marinatb/client
