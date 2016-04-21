@@ -16,3 +16,6 @@
 [submodule "client"]
 	path = client
 	url = git@github.com:marinatb/client
+[submodule "3p/proxygen"]
+	path = 3p/proxygen
+	url = https://github.com/facebook/proxygen.git
