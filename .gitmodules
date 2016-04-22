@@ -10,9 +10,6 @@
 [submodule "db"]
 	path = db
 	url = git@github.com:marinatb/db
-[submodule "node"]
-	path = node
-	url = git@github.com:marinatb/node
 [submodule "client"]
 	path = client
 	url = git@github.com:marinatb/client
@@ -22,3 +19,9 @@
 [submodule "common"]
 	path = common
 	url = git@github.com:marinatb/common
+[submodule "web"]
+	path = web
+	url = git@github.com:marinatb/web
+[submodule "core"]
+	path = core
+	url = git@github.com:marinatb/core
