@@ -4,7 +4,7 @@
 
 # cmake ........................................................................
 cmake_minimum_required(VERSION 3.0)
-project(libdna)
+project(marinatb)
 set(CMAKE_MODULE_PATH
   ${CMAKE_MODULE_PATH}
   "${libdna_SOURCE_DIR}/cmake"
@@ -23,9 +23,8 @@ set( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} \
   -g -O0 -fno-omit-frame-pointer" )
 
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
-  -g -std=c++14 -stdlib=libc++ \
-  -Wall -Wextra \
-  -fcolor-diagnostics" )
+  -g -std=c++14 \
+  -Wall -Wextra" )
 
 set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} \
   -O3" )
@@ -39,11 +38,11 @@ include_directories(
 )
 
 # build components .............................................................
-if(EXISTS common)
+if(EXISTS "${marinatb_SOURCE_DIR}/common")
   add_subdirectory(common)
-endif(EXISTS common)
+endif(EXISTS "${marinatb_SOURCE_DIR}/common")
 
-if(EXISTS test)
+if(EXISTS "${marinatb_SOURCE_DIR}/test")
   add_subdirectory(test)
-endif(EXISTS test)
+endif(EXISTS "${marinatb_SOURCE_DIR}/test")
 
