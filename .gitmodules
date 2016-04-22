@@ -15,7 +15,7 @@
 	url = git@github.com:marinatb/client
 [submodule "3p/proxygen"]
 	path = 3p/proxygen
-	url = https://github.com/facebook/proxygen.git
+	url = git@github.com:rcgoodfellow/proxygen
 [submodule "common"]
 	path = common
 	url = git@github.com:marinatb/common
