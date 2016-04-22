@@ -7,15 +7,14 @@ cmake_minimum_required(VERSION 3.0)
 project(marinatb)
 set(CMAKE_MODULE_PATH
   ${CMAKE_MODULE_PATH}
-  "${libdna_SOURCE_DIR}/cmake"
+  "${marinatb_SOURCE_DIR}/cmake"
   "/usr/local/lib/cmake")
 
 # compiler settings ............................................................
 set( CMAKE_C_FLAGS
   "${CMAKE_C_FLAGS} \
   -std=c11 \
-  -Wall -Wextra \
-  -fcolor-diagnostics" )
+  -Wall -Wextra " )
 
 set( CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 
@@ -24,7 +23,8 @@ set( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} \
 
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
   -g -std=c++14 \
-  -Wall -Wextra" )
+  -Wall -Wextra \
+  -fdiagnostics-color=always" )
 
 set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} \
   -O3" )
@@ -33,7 +33,7 @@ set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} \
   -g -O0 -fno-omit-frame-pointer" )
 
 include_directories(
-  "${libdna_SOURCE_DIR}/lib"
+  "${marinatb_SOURCE_DIR}"
   "/usr/local/include/c++/v1"
 )
 

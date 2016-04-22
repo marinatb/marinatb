@@ -15,15 +15,21 @@ function do_cmake {
 }
 
 function do_ninja {
-  $RUN $ARGS\
+  $RUN $ARGS \
     -v `pwd`:/code \
     --workdir=/code/build \
     --entrypoint=$NINJA $CONTAINER $@
 }
 
+function do_run {
+  $RUN $ARGS \
+    -v `pwd`:/code \
+    --entrypoint=bash $CONTAINER
+}
+
 case $1 in
   "cmake") do_cmake;;
   "ninja") shift; do_ninja $@;;
-  "run") $RUN $ARGS --entrypoint=bash $CONTAINER;;
+  "run") do_run;;
   *) echo "usage build <component> [cmake|ninja|test]" ;;
 esac
