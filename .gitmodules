@@ -21,6 +21,7 @@
 [submodule "3p/proxygen"]
 	path = 3p/proxygen
 	url = git@github.com:rcgoodfellow/proxygen
+	branch = master
 [submodule "common"]
 	path = common
 	url = git@github.com:marinatb/common
