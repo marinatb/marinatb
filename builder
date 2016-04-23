@@ -1,6 +1,7 @@
 #!/bin/bash
 
-ARGS="-ti --rm --hostname=builder --name=builder --privileged"
+ARGS="-ti --rm --hostname=builder --name=builder \
+  --privileged" # --detach-keys ctrl-i,ctrl-i"
 CMAKE="cmake"
 CMAKE_ARGS=".. -G Ninja"
 CONTAINER="builder"
