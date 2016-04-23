@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ARGS="-ti --rm --hostname=builder --name=builder"
+ARGS="-ti --rm --hostname=builder --name=builder --privileged"
 CMAKE="cmake"
 CMAKE_ARGS=".. -G Ninja"
 CONTAINER="builder"
