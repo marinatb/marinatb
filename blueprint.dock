@@ -4,8 +4,10 @@ ADD deploy_deps /tmp/
 RUN /tmp/deploy_deps
 
 RUN mkdir -p /marina
-ADD build/test/api/run_api_tests /marina/
+ADD build/core/blueprint /marina/
 ADD pkg/usr/local /usr/local
 RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/marinalibs.conf && ldconfig
+ADD cert/blueprint_cert.pem /marina/cert.pem
+ADD cert/blueprint_key.pem /marina/key.pem
 
-ENTRYPOINT ["/marina/run_api_tests"]
+ENTRYPOINT ["/marina/blueprint"]
