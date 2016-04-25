@@ -22,7 +22,7 @@ function do_ninja {
 }
 
 function do_run {
-  $RUN $ARGS --hostname=$1 --name=$1 \
+  $RUN $ARGS --hostname=$1 --name=$1 --net=tnet \
     -v `pwd`:/code \
     --entrypoint=bash $1
 }
@@ -32,6 +32,7 @@ case $1 in
   "cmake") do_cmake ;;
   "ninja") shift; do_ninja $@ ;;
   "run") do_run $2 ;;
+  "net") docker network create --driver bridge tnet ;;
 
   #yes this is gross~~ but proxygen has a ghetto build system and no packaging
   #so we need to work around that for the time being, perhaps contribute a

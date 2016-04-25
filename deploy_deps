@@ -19,4 +19,6 @@ apt-get update && apt-get install -y \
   libgflags2v5 \
   libdouble-conversion1v5 \
   ca-certificates \
+  net-tools \
+  iputils-ping  
 
