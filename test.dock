@@ -4,9 +4,8 @@ ADD deploy_deps /tmp/
 RUN /tmp/deploy_deps
 
 RUN mkdir -p /marina
-ADD build/api/marina-api /marina/
+ADD build/test/api/run_api_tests /marina/
 ADD pkg/usr/local /usr/local
 RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/marinalibs.conf && ldconfig
 
 ENTRYPOINT ["/marina/marina-api"]
-
