@@ -1,0 +1,30 @@
+FROM ubuntu:15.10
+
+RUN apt-get update && apt-get install -y \
+  libssl1.0.0 \
+  libboost-context1.58.0 \
+  libboost-program-options1.58.0 \
+  libboost-filesystem1.58.0 \
+  libboost-system1.58.0 \
+  libboost-regex1.58.0 \
+  libboost-thread1.58.0 \
+  libkrb5-3 \
+  libsasl2-2 \
+  libnuma1 \
+  libcap2 \
+  libevent-2.0-5 \
+  libjemalloc1 \
+  libsnappy1v5 \
+  libgoogle-glog0v5 \
+  libgflags2v5 \
+  libdouble-conversion1v5  
+
+
+RUN mkdir -p /marina
+ADD build/api/marina-api /marina/
+ADD pkg/usr/local /usr/local
+
+RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/marinalibs.conf && ldconfig
+
+ENTRYPOINT ["/marina/marina-api"]
+

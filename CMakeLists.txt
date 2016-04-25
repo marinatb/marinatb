@@ -46,3 +46,7 @@ if(EXISTS "${marinatb_SOURCE_DIR}/test")
   add_subdirectory(test)
 endif(EXISTS "${marinatb_SOURCE_DIR}/test")
 
+if(EXISTS "${marinatb_SOURCE_DIR}/api")
+  add_subdirectory(api)
+endif(EXISTS "${marinatb_SOURCE_DIR}/api")
+
