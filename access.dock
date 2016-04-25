@@ -1,0 +1,13 @@
+FROM ubuntu:15.10
+
+ADD deploy_deps /tmp/
+RUN /tmp/deploy_deps
+
+RUN mkdir -p /marina
+ADD build/core/access /marina/
+ADD pkg/usr/local /usr/local
+RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/marinalibs.conf && ldconfig
+ADD cert/access_cert.pem /marina/cert.pem
+ADD cert/access_key.pem /marina/key.pem
+
+ENTRYPOINT ["/marina/access"]

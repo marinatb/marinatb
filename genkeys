@@ -1,9 +1,14 @@
 #!/bin/sh
 
+if [ "$#" -ne 1 ]; then
+  echo "usage: genkeys <target>"
+  exit 1
+fi
+
 openssl req -x509 \
   -newkey rsa:2048 \
-  -keyout key.pem \
-  -out cert.pem \
+  -keyout "cert/${1}_key.pem" \
+  -out "cert/${1}_cert.pem" \
   -days 365 \
   -nodes \
   -subj "/C=US/ST=California/L=Los Angeles/O=USC ISI/OU=Deter/CN=${1}.marina.deterlab.net"

@@ -50,3 +50,7 @@ if(EXISTS "${marinatb_SOURCE_DIR}/api")
   add_subdirectory(api)
 endif(EXISTS "${marinatb_SOURCE_DIR}/api")
 
+if(EXISTS "${marinatb_SOURCE_DIR}/core")
+  add_subdirectory(core)
+endif(EXISTS "${marinatb_SOURCE_DIR}/core")
+
