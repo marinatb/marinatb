@@ -20,7 +20,7 @@
 	branch = master
 [submodule "3p/proxygen"]
 	path = 3p/proxygen
-	url = git@github.com:rcgoodfellow/proxygen
+	url = https://github.com/rcgoodfellow/proxygen
 	branch = master
 [submodule "common"]
 	path = common
@@ -33,4 +33,20 @@
 [submodule "core"]
 	path = core
 	url = git@github.com:marinatb/core
+	branch = master
+[submodule "3p/json"]
+	path = 3p/json
+	url = https://github.com/nlohmann/json.git
+	branch = master
+[submodule "3p/pipes"]
+	path = 3p/pipes
+	url = https://github.com/rcgoodfellow/pipes
+	branch = master
+[submodule "3p/wangle"]
+	path = 3p/wangle
+	url = https://github.com/rcgoodfellow/wangle
+	branch = master
+[submodule "3p/folly"]
+	path = 3p/folly
+	url = https://github.com/rcgoodfellow/folly
 	branch = master
