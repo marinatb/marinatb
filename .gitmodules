@@ -1,22 +1,22 @@
 [submodule "test"]
 	path = test
-	url = git@github.com:marinatb/test
+	url = https://github.com/marinatb/test
 	branch = master
 [submodule "api"]
 	path = api
-	url = git@github.com:marinatb/api
+	url = https://github.com/marinatb/api
 	branch = master
 [submodule "internal"]
 	path = internal
-	url = git@github.com:marinatb/internal
+	url = https://github.com/marinatb/internal
 	branch = master
 [submodule "db"]
 	path = db
-	url = git@github.com:marinatb/db
+	url = https://github.com/marinatb/db
 	branch = master
 [submodule "client"]
 	path = client
-	url = git@github.com:marinatb/client
+	url = https://github.com/marinatb/client
 	branch = master
 [submodule "3p/proxygen"]
 	path = 3p/proxygen
@@ -24,15 +24,15 @@
 	branch = master
 [submodule "common"]
 	path = common
-	url = git@github.com:marinatb/common
+	url = https://github.com/marinatb/common
 	branch = master
 [submodule "web"]
 	path = web
-	url = git@github.com:marinatb/web
+	url = https://github.com/marinatb/web
 	branch = master
 [submodule "core"]
 	path = core
-	url = git@github.com:marinatb/core
+	url = https://github.com/marinatb/core
 	branch = master
 [submodule "3p/json"]
 	path = 3p/json
