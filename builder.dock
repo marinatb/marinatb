@@ -26,6 +26,14 @@ RUN cd /tmp && \
   cd proxygen/proxygen && \
   ./deps.sh -j `nproc` && \
   ./reinstall.sh
+
+RUN cd /tmp && \
+  svn co http://llvm.org/svn/llvm-project/libcxx/trunk libcxx && \
+  cd libcxx && \
+  mkdir build && \
+  cd build && \
+  cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang .. -G Ninja && \
+  sudo ninja install
   
 
 ENTRYPOINT ["ninja"]

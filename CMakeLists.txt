@@ -31,7 +31,7 @@ set( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} \
   -g -O0 -fno-omit-frame-pointer" )
 
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
-  -g -std=c++14 -stdlib=libc++ \
+  -g -std=c++1z -stdlib=libc++ \
   -Wall -Wextra \
   -fdiagnostics-color=always" )
 
@@ -45,14 +45,6 @@ include_directories(
   "${marinatb_SOURCE_DIR}"
   "/usr/local/include/c++/v1"
 )
-
-#3p ............................................................................
-#if(EXISTS "${marinatb_SOURCE_DIR}/3p/proxygen")
-#  add_subdirectory(3p/proxygen/proxygen)
-#endif(EXISTS "${marinatb_SOURCE_DIR}/3p/proxygen")
-if(EXISTS "${marinatb_SOURCE_DIR}/3p/json")
-  add_subdirectory(3p/json)
-endif(EXISTS "${marinatb_SOURCE_DIR}/3p/json")
 
 # build components .............................................................
 if(EXISTS "${marinatb_SOURCE_DIR}/common")
