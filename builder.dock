@@ -4,8 +4,6 @@ RUN apt-get update && apt-get install -y \
   tmux \
   clang \
   lldb \
-  libc++-dev \
-  libc++abi-dev \
   cmake \
   ninja-build \
   ssh \
@@ -22,18 +20,28 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir /build
 
 RUN cd /tmp && \
+  svn co http://llvm.org/svn/llvm-project/llvm/trunk llvm && \
+  cd llvm/tools && \
+  svn co http://llvm.org/svn/llvm-project/cfe/trunk clang && \
+  cd ../projects && \
+  svn co http://llvm.org/svn/llvm-project/compiler-rt/trunk compiler-rt && \
+  svn co http://llvm.org/svn/llvm-project/openmp/trunk openmp && \
+  svn co http://llvm.org/svn/llvm-project/libcxx/trunk libcxx && \
+  svn co http://llvm.org/svn/llvm-project/libcxxabi/trunk libcxxabi && \
+  svn co http://llvm.org/svn/llvm-project/test-suite/trunk test-suite && \
+  cd .. && \
+  mkdir build && \
+  cd build && \
+  cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=RelWithDebInfo .. -G Ninja && \
+  ninja && \
+  ninja install
+
+RUN cd /tmp && \
   git clone https://github.com/rcgoodfellow/proxygen && \
   cd proxygen/proxygen && \
   ./deps.sh -j `nproc` && \
   ./reinstall.sh
 
-RUN cd /tmp && \
-  svn co http://llvm.org/svn/llvm-project/libcxx/trunk libcxx && \
-  cd libcxx && \
-  mkdir build && \
-  cd build && \
-  cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang .. -G Ninja && \
-  sudo ninja install
   
 
 ENTRYPOINT ["ninja"]

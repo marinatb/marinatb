@@ -87,6 +87,10 @@ case $1 in
 
     mkdir -p pkg/usr/local
     docker cp builder:/usr/local/lib pkg/usr/local/
+    #these monsters are only needed on the builder atm
+    rm pkg/usr/local/libclang*
+    rm pkg/usr/local/libLLVM*
+    rm pkg/usr/local/libLTO.so
   ;;
 
   *) echo "usage build <component> [cmake|ninja|test]" ;;
