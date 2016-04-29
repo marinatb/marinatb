@@ -43,6 +43,11 @@ function do_terminate {
   docker rm $1
 }
 
+function do_restart {
+  do_terminate $1
+  do_launch $1
+}
+
 function do_containerize {
   docker build -t "$1" -f "${1}.dock" . 
 }
@@ -56,6 +61,7 @@ case $1 in
   "net") docker network create --driver bridge tnet ;;
   "launch") do_launch $2 ;;
   "terminate") do_terminate $2 ;;
+  "restart") do_restart $2 ;;
   "containerize-system")
     do_containerize api
     do_containerize access
@@ -76,6 +82,13 @@ case $1 in
     do_terminate accounts
     do_terminate blueprint
     do_terminate materialization
+    ;;
+  "restart-system")
+    do_restart api
+    do_restart access
+    do_restart accounts
+    do_restart blueprint
+    do_restart materialization
     ;;
 
   #yes this is gross~~ but proxygen has a ghetto build system and no packaging
