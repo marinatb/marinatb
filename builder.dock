@@ -34,13 +34,19 @@ RUN cd /tmp && \
   cd build && \
   cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=RelWithDebInfo .. -G Ninja && \
   ninja && \
-  ninja install
+  ninja install && \
+  cd /tmp && \
+  rm -rf llvm 
 
 RUN cd /tmp && \
   git clone https://github.com/rcgoodfellow/proxygen && \
   cd proxygen/proxygen && \
   ./deps.sh -j `nproc` && \
-  ./reinstall.sh
+  ./reinstall.sh && \
+  cd /tmp && \
+  rm -rf proxygen
+
+RUN rm -rf /tmp/llvm/build
 
   
 

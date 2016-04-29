@@ -3,7 +3,7 @@
 ARGS="-ti --rm --privileged"
 DARGS="-d --privileged"
 CMAKE="cmake"
-CMAKE_ARGS=".. -G Ninja"
+CMAKE_ARGS=".. -G Ninja -DCMAKE_BUILD_TYPE=Debug"
 CONTAINER="builder"
 RUN="docker run"
 
@@ -35,7 +35,7 @@ function do_run {
 }
 
 function do_launch {
-  $RUN $DARGS --hostname=$1 --name=$1 --net=tnet $1
+  $RUN $DARGS --hostname=$1 --name=$1 --net=tnet -v `pwd`:/code $1
 }
 
 function do_terminate {
@@ -88,9 +88,9 @@ case $1 in
     mkdir -p pkg/usr/local
     docker cp builder:/usr/local/lib pkg/usr/local/
     #these monsters are only needed on the builder atm
-    rm pkg/usr/local/libclang*
-    rm pkg/usr/local/libLLVM*
-    rm pkg/usr/local/libLTO.so
+    rm pkg/usr/local/lib/libclang*
+    rm pkg/usr/local/lib/libLLVM*
+    rm pkg/usr/local/lib/libLTO.so
   ;;
 
   *) echo "usage build <component> [cmake|ninja|test]" ;;

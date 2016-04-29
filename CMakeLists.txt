@@ -28,7 +28,7 @@ set( CMAKE_C_FLAGS
 set( CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 
 set( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} \
-  -g -O0 -fno-omit-frame-pointer" )
+  -g -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer" )
 
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
   -g -std=c++1z -stdlib=libc++ \
@@ -39,7 +39,7 @@ set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} \
   -O3" )
 
 set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} \
-  -g -O0 -fno-omit-frame-pointer" )
+  -g -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer" )
 
 include_directories(
   "${marinatb_SOURCE_DIR}"
