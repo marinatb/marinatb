@@ -3,8 +3,8 @@ FROM ubuntu:15.10
 ADD deploy_deps /tmp/
 RUN /tmp/deploy_deps
 
-RUN mkdir -p /marina
-ADD build/api/marina-api /marina/
+RUN mkdir -p /marina && ln -s /code/build/api/marina-api /marina/marina-api
+#ADD build/api/marina-api /marina/
 ADD pkg/usr/local /usr/local
 RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/marinalibs.conf && ldconfig
 ADD cert/api_cert.pem /marina/cert.pem
