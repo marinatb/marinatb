@@ -48,6 +48,23 @@ RUN cd /tmp && \
 
 RUN rm -rf /tmp/llvm/build
 
-  
+RUN cd /tmp && \
+  git clone https://github.com/mongodb/mongo-c-driver.git && \
+  cd mongo-c-driver && \
+  git checkout r1.3 && \
+  export CXX=clang++ && \
+  export CC=clang && \
+  export CXXFLAGS="-stdlib=libc++" && \
+  ./autogen.sh && \
+  make -j8 && \
+  make install
+
+RUN cd /tmp && \
+  git clone https://github.com/rcgoodfellow/mongo-cxx-driver.git && \
+  cd mongo-cxx-driver && \
+  mkdir -p build && \
+  cd build && \
+  cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_FLAGS="-stdlib=libc++" .. -G Ninja && \
+  ninja install
 
 ENTRYPOINT ["ninja"]
