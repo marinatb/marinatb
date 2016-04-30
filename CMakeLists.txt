@@ -10,7 +10,11 @@ set( CMAKE_C_COMPILER /usr/bin/clang )
 
 project(marinatb)
 
-include_directories(/usr/local/c++/v1)
+include_directories(
+  /usr/local/include/c++/v1 
+  /usr/local/include/bsoncxx/v_noabi
+  /usr/local/include/mongocxx/v_noabi
+)
 
 
 set(CMAKE_MODULE_PATH
