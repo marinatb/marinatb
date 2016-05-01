@@ -1,4 +1,5 @@
 FROM ubuntu:15.10
+
 RUN apt-get update && apt-get install -y \
   vim-nox \
   tmux \
@@ -38,6 +39,8 @@ RUN cd /tmp && \
   cd /tmp && \
   rm -rf llvm 
 
+RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/marinalibs.conf && ldconfig
+
 RUN cd /tmp && \
   git clone https://github.com/rcgoodfellow/proxygen && \
   cd proxygen/proxygen && \
@@ -67,6 +70,5 @@ RUN cd /tmp && \
   cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX="/usr/local" -DCMAKE_CXX_FLAGS="-stdlib=libc++" .. -G Ninja && \
   ninja install
 
-RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/marinalibs.conf && ldconfig
 
 ENTRYPOINT ["ninja"]
