@@ -62,8 +62,8 @@ RUN cd /tmp && \
 
 RUN cd /tmp && \
   git clone https://github.com/rcgoodfellow/mongo-cxx-driver.git && \
-  git checkout r3.0.0
   cd mongo-cxx-driver && \
+  git checkout r3.0.0 && \
   mkdir -p build && \
   cd build && \
   cmake -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang -DCMAKE_INSTALL_PREFIX="/usr/local" -DCMAKE_CXX_FLAGS="-stdlib=libc++" .. -G Ninja && \
