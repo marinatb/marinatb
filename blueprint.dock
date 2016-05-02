@@ -4,10 +4,18 @@ ADD deploy_deps /tmp/
 RUN /tmp/deploy_deps
 
 RUN mkdir -p /marina && ln -s /code/build/core/blueprint /marina/blueprint
-#ADD build/core/blueprint /marina/
 ADD pkg/usr/local /usr/local
 RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/marinalibs.conf && ldconfig
 ADD cert/blueprint_cert.pem /marina/cert.pem
 ADD cert/blueprint_key.pem /marina/key.pem
 
-ENTRYPOINT ["/marina/blueprint"]
+#RUN mkdir -p /data/db && apt-get install -y mongodb-server && /etc/init.d/mongodb start
+
+#RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927 && \
+#  echo "deb http://repo.mongodb.org/apt/ubuntu trusty/mongodb-org/3.2 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-3.2.list && \
+#  mkdir -p /data/db && \
+#  apt-get update && \
+#  apt-get install -y mongodb-org
+  
+
+ENTRYPOINT ["mongod &; /marina/blueprint"]
