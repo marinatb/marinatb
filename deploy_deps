@@ -11,5 +11,6 @@ apt-get update && apt-get install -y \
   libsnappy1v5 \
   ca-certificates \
   net-tools \
-  iputils-ping  
+  iputils-ping \
+  tmux
 

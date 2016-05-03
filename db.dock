@@ -1,0 +1,9 @@
+FROM postgres:9.5
+
+ENV POSTGRES_PASSWORD muffins
+ENV POSTGRES_USER murphy
+
+RUN mkdir -p /docker-entrypoint-initdb.d
+RUN ln -s /code/db/marinatb.sql /docker-entrypoint-initdb.d/marinatb.sql
+
+#RUN psql -d postgres -U muprhy -f /marina/marinatb.sql

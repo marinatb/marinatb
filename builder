@@ -77,7 +77,7 @@ case $1 in
     do_launch accounts
     do_launch blueprint
     do_launch materialization
-    do_launch mongo
+    do_launch db
     ;;
   "terminate-system")
     do_terminate api
@@ -85,7 +85,7 @@ case $1 in
     do_terminate accounts
     do_terminate blueprint
     do_terminate materialization
-    do_terminate mongo
+    do_terminate db
     ;;
   "restart-system")
     do_restart api
@@ -93,7 +93,7 @@ case $1 in
     do_restart accounts
     do_restart blueprint
     do_restart materialization
-    do_restart mongo
+    do_restart db
     ;;
 
   #yes this is gross~~ but proxygen has a ghetto build system and no packaging
