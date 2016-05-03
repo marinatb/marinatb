@@ -12,5 +12,7 @@ apt-get update && apt-get install -y \
   ca-certificates \
   net-tools \
   iputils-ping \
-  tmux
+  libpq5 \
+  tmux \
+  vim-nox
 

@@ -72,12 +72,12 @@ case $1 in
     do_containerize materialization
     ;;
   "launch-system")
+    do_launch db
     do_launch api
     do_launch access
     do_launch accounts
     do_launch blueprint
     do_launch materialization
-    do_launch db
     ;;
   "terminate-system")
     do_terminate api
@@ -88,12 +88,12 @@ case $1 in
     do_terminate db
     ;;
   "restart-system")
+    do_restart db
     do_restart api
     do_restart access
     do_restart accounts
     do_restart blueprint
     do_restart materialization
-    do_restart db
     ;;
 
   #yes this is gross~~ but proxygen has a ghetto build system and no packaging
