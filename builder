@@ -23,10 +23,13 @@ function do_ninja {
 }
 
 function do_console {
-#  $RUN $ARGS --hostname=$1 --name=$1 --net=tnet \
-#    -v `pwd`:/code \
-#    --entrypoint=bash $1
   docker exec -i -t $1 /bin/bash
+}
+
+function do_run_console {
+   $RUN $ARGS --hostname=$1 --name=$1 --net=tnet \
+     -v `pwd`:/code \
+     --entrypoint=bash $1
 }
 
 function do_run {
@@ -60,6 +63,7 @@ case $1 in
   "cmake") do_cmake ;;
   "ninja") shift; do_ninja $@ ;;
   "console") do_console $2 ;;
+  "run-console") do_run_console $2 ;;
   "run") do_run $2 ;;
   "net") docker network create --driver bridge tnet ;;
   "launch") do_launch $2 ;;
