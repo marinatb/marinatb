@@ -4,7 +4,7 @@ ARGS="-ti --rm --privileged"
 DARGS="-d --privileged"
 CMAKE="cmake"
 CMAKE_ARGS=".. -G Ninja -DCMAKE_BUILD_TYPE=Debug"
-CONTAINER="builder"
+CONTAINER="marinatb/builder"
 RUN="docker run"
 
 function do_cmake {
@@ -30,6 +30,12 @@ function do_run_console {
    $RUN $ARGS --hostname=$1 --name=$1 --net=tnet \
      -v `pwd`:/code \
      --entrypoint=bash $1
+}
+
+function do_build_console {
+   $RUN $ARGS --hostname=builder --name=builder --net=tnet \
+     -v `pwd`:/code \
+     --entrypoint=bash marinatb/builder
 }
 
 function do_run {
@@ -62,6 +68,7 @@ case $1 in
   "containerize") do_containerize $2 ;;
   "cmake") do_cmake ;;
   "ninja") shift; do_ninja $@ ;;
+  "build-console") do_build_console $2 ;;
   "console") do_console $2 ;;
   "run-console") do_run_console $2 ;;
   "run") do_run $2 ;;
