@@ -16,6 +16,10 @@ cd deps
 ### Building marinatb
 
 ```shell
+#get 3p sources
+git submodule init
+git submodule update
+
 mkdir build
 cd build
 cmake .. -G Ninja
