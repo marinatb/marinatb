@@ -5,7 +5,6 @@ set -e
 
 srcdir="${SRCDIR:-/tmp}"
 jobs_=`nproc`
-config_="--enable-static --enable-shared=NO"
 
 export CXX=clang++
 export CC=clang
@@ -14,7 +13,7 @@ export CXXFLAGS=" \
   -I/usr/local/include/c++/v1 \
   -Wno-sign-compare \
   -Wno-reserved-user-defined-literal -fPIC"
-export LDFLAGS="-pthread"
+export LDFLAGS="-pthread -lc++abi"
 
 export LD_LIBRARY_PATH=/usr/local/lib
 
@@ -31,7 +30,7 @@ fi
 
 cd folly/folly
 autoreconf -i
-./configure $config_
+./configure
 make -j$jobs_
 sudo make install
 

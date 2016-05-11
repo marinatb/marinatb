@@ -5,7 +5,6 @@ set -e
 
 srcdir="${SRCDIR:-/tmp}"
 jobs_=`nproc`
-config_="--enable-static"
 
 cxxflags="\
   -stdlib=libc++ -std=c++14 \
@@ -27,7 +26,7 @@ cd build
 cmake \
   -DCMAKE_CXX_COMPILER=clang++ \
   -DCMAKE_C_COMPILER=clang \
-  -DCMAKE_CXX_FLAGS="$cxxflags" \
+  -DCMAKE_CXX_FLAGS="$cxxflags -fPIC" \
   .. \
   -G Ninja
 

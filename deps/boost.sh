@@ -14,7 +14,8 @@ linkflags_="-stdlib=libc++"
 cd $srcdir
 
 if [ ! -d "boost_1_60_0" ]; then
-  curl -OL $url -o boost_1_60_0.tgz
+  curl -OL $url -o 
+  mv download > boost_1_60_0.tgz
   tar zxf boost_1_60_0.tgz
 fi
 
@@ -26,13 +27,11 @@ cd boost_1_60_0
   toolset=clang \
   cxxflags="$cxxflags_" \
   linkflags="$linkflags_" \
-  link=static \
   --without-python -j$jobs_
 
 sudo ./b2 install \
   toolset=clang \
   cxxflags="$cxxflags_" \
   linkflags="$linkflags_" \
-  link=static \
   --without-python
 

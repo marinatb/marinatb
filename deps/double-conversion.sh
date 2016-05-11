@@ -5,7 +5,6 @@ set -e
 
 srcdir="${SRCDIR:-/tmp}"
 jobs_=`nproc`
-config_="--enable-static"
 
 export CXX=clang++
 export CC=clang
@@ -13,13 +12,13 @@ export CXXFLAGS=" \
   -stdlib=libc++ -std=c++14 \
   -I/usr/local/include/c++/v1 \
   -Wno-sign-compare \
-  -Wno-reserved-user-defined-literal"
+  -Wno-reserved-user-defined-literal -fPIC"
 
 cxxflags="\
   -stdlib=libc++ -std=c++14 \
   -I/usr/local/include/c++/v1 \
   -Wno-sign-compare \
-  -Wno-reserved-user-defined-literal"
+  -Wno-reserved-user-defined-literal -fPIC"
 
 export LD_LIBRARY_PATH=/usr/local/lib
 
