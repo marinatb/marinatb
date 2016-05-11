@@ -1,5 +1,5 @@
-# builder
-Builder of the testbed
+# MarinaTB
+A network testbed for cybersecurity experimentation.
 
 ## Building
 
