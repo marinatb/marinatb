@@ -14,8 +14,8 @@ linkflags_="-stdlib=libc++"
 cd $srcdir
 
 if [ ! -d "boost_1_60_0" ]; then
-  curl -OL $url -o 
-  mv download > boost_1_60_0.tgz
+  curl -OL $url
+  mv download boost_1_60_0.tgz
   tar zxf boost_1_60_0.tgz
 fi
 

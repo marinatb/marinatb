@@ -12,8 +12,8 @@ export CXXFLAGS=" \
   -stdlib=libc++ -std=c++14 \
   -I/usr/local/include/c++/v1 \
   -Wno-sign-compare \
-  -Wno-reserved-user-defined-literal -fPIC"
-export LDFLAGS="-pthread -lc++abi"
+  -Wno-reserved-user-defined-literal"
+export LDFLAGS="-lc++abi"
 
 export LD_LIBRARY_PATH=/usr/local/lib
 

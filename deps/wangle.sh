@@ -26,7 +26,7 @@ cd build
 cmake \
   -DCMAKE_CXX_COMPILER=clang++ \
   -DCMAKE_C_COMPILER=clang \
-  -DCMAKE_CXX_FLAGS="$cxxflags -fPIC" \
+  -DCMAKE_CXX_FLAGS="$cxxflags" \
   .. \
   -G Ninja
 

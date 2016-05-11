@@ -116,7 +116,8 @@ case $1 in
     #docker cp builder:/usr/lib pkg/usr/
 
     mkdir -p pkg/usr/local
-    docker cp builder:/usr/local/lib pkg/usr/local/
+    #docker cp builder:/usr/local/lib pkg/usr/local/
+    cp -r /usr/local/lib pkg/usr/local
     #these monsters are only needed on the builder atm
     rm pkg/usr/local/lib/libclang*
     rm pkg/usr/local/lib/libLLVM*
