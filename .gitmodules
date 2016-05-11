@@ -18,10 +18,6 @@
 	path = 3p/proxygen
 	url = https://github.com/rcgoodfellow/proxygen
 	branch = master
-[submodule "common"]
-	path = common
-	url = https://github.com/marinatb/common
-	branch = master
 [submodule "web"]
 	path = web
 	url = https://github.com/marinatb/web
