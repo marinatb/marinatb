@@ -2,10 +2,6 @@
 	path = test
 	url = https://github.com/marinatb/test
 	branch = master
-[submodule "api"]
-	path = api
-	url = https://github.com/marinatb/api
-	branch = master
 [submodule "db"]
 	path = db
 	url = https://github.com/marinatb/db
