@@ -3,6 +3,8 @@ A network testbed for cybersecurity experimentation.
 
 ## Building
 
+Right now we are setup to run on Ubuntu 16.04 LTS.
+
 ### Build Environment Setup
 
 ```shell
