@@ -6,10 +6,6 @@
 	path = api
 	url = https://github.com/marinatb/api
 	branch = master
-[submodule "internal"]
-	path = internal
-	url = https://github.com/marinatb/internal
-	branch = master
 [submodule "db"]
 	path = db
 	url = https://github.com/marinatb/db
@@ -41,12 +37,4 @@
 [submodule "3p/pipes"]
 	path = 3p/pipes
 	url = https://github.com/rcgoodfellow/pipes
-	branch = master
-[submodule "3p/wangle"]
-	path = 3p/wangle
-	url = https://github.com/rcgoodfellow/wangle
-	branch = master
-[submodule "3p/folly"]
-	path = 3p/folly
-	url = https://github.com/rcgoodfellow/folly
 	branch = master
