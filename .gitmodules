@@ -6,10 +6,6 @@
 	path = db
 	url = https://github.com/marinatb/db
 	branch = master
-[submodule "client"]
-	path = client
-	url = https://github.com/marinatb/client
-	branch = master
 [submodule "3p/proxygen"]
 	path = 3p/proxygen
 	url = https://github.com/rcgoodfellow/proxygen
