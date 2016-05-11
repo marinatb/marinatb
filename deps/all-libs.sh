@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
-./ubuntu.sh
+./ubuntu-libs.sh
 ./boost.sh
 ./double-conversion.sh
 ./gflags.sh
