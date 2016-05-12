@@ -13,6 +13,8 @@ cd deps
 ./all-libs.sh
 ```
 
+*caveat: this installs the Ubuntu 16.04 version of libc++, that may not be sufficent as I use cutting edge c++ features from libc++, you may need to install from source trunk from [libc++](http://libcxx.llvm.org/)
+
 ### Building marinatb
 
 ```shell
