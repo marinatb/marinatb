@@ -3,3 +3,9 @@ build
 pkg
 
 Session.vim
+
+#debian packaging stuff
+*.gz
+*.tgz
+
+marinatb-ops
