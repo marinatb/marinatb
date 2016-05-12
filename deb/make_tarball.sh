@@ -8,6 +8,11 @@ tar czf \
   marinatb \
   --exclude='build' \
   --exclude='pkg' \
+  --exclude='deb' \
+  --exclude='.git' \
+  --exclude='.gitignore' \
+  --exclude="*.sw*" \
+  --exclude=".git*" \
   --warning=no-file-changed
 
 mv /tmp/marinatb.tgz .

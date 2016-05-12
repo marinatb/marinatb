@@ -4,8 +4,3 @@ pkg
 
 Session.vim
 
-#debian packaging stuff
-*.gz
-*.tgz
-
-deb/marinatb-ops

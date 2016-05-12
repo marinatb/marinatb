@@ -1,0 +1,10 @@
+
+#debian packaging stuff
+*.gz
+*.tgz
+
+marinatb-ops/*
+!marinatb-ops/debian
+marinatb-ops/debian/*
+!marinatb-ops/debian/control
+
