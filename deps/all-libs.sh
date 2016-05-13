@@ -1,5 +1,8 @@
 #!/bin/bash
 
+set -u
+set -e
+
 ./ubuntu-libs.sh
 ./boost.sh
 ./double-conversion.sh
