@@ -1,15 +1,23 @@
 Source: marinatb-ops
-Section: unknown
+Section: devel
 Priority: optional
 Maintainer: Ryan Goodfellow <rgoodfel@isi.edu>
 Build-Depends: debhelper (>=9)
 Standards-Version: 3.9.6
-Homepage: <insert the upstream URL, if relevant>
-#Vcs-Git: git://anonscm.debian.org/collab-maint/marinatb-ops.git
-#Vcs-Browser: https://anonscm.debian.org/cgit/collab-maint/marinatb-ops.git
+Homepage: https://marinatb.net
+Vcs-Git: https://github.com/marinatb/marinatb.git
+#Vcs-Browser: https://launchpad.net/rgoodfel/marinatb.git
 
 Package: marinatb-ops
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: <insert up to 60 chars description>
- <insert long description, indented with spaces>
+Architecture: amd64
+Depends: libpq5, uuid, ${shlibs:Depends}, ${misc:Depends}
+Description: Marina cybersecurity testbed operations services
+  This package contains the core services and databases for
+  marinatb, this includes
+    - https api
+    - access control
+    - blueprint
+    - materialization
+    - central database
+  This package does not include host control services, those
+  are contained in the package marinatb-hostctl
