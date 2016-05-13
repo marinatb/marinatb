@@ -8,4 +8,5 @@ marinatb-ops/*
 marinatb-ops/debian/*
 !marinatb-ops/debian/control
 !marinatb-ops/debian/changelog
+!marinatb-ops/debian/copyright
 
