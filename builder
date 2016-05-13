@@ -112,7 +112,7 @@ case $1 in
   #so we need to work around that for the time being, perhaps contribute a
   #build environment back to fb
   "pkg")
-    #mkdir -p pkg/usr
+    mkdir -p pkg/usr
     #docker cp builder:/usr/lib pkg/usr/
 
     mkdir -p pkg/usr/local
@@ -122,6 +122,23 @@ case $1 in
     rm pkg/usr/local/lib/libclang*
     rm pkg/usr/local/lib/libLLVM*
     rm pkg/usr/local/lib/libLTO.so
+  ;;
+
+  "host-pkg")
+    rm -rf host-pkg
+    mkdir -p host-pkg/libs
+    mkdir -p host-pkg/bin
+
+    ldd build/core/host-control |\
+    awk 'NF == 4 {print $3}; NF == 2 {print $1}' |\
+    grep local |\
+    xargs cp -t host-pkg/libs/
+
+    cp build/core/host-control host-pkg/bin/
+
+    tar czf host-pkg.tgz host-pkg
+    rm -rf host-pkg
+
   ;;
 
   *) echo "usage build <component> [cmake|ninja|test]" ;;

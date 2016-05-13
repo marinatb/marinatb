@@ -4,3 +4,9 @@ pkg
 
 Session.vim
 
+build-area
+*.xz
+*.deb
+*.dsc
+*.changes
+*.tgz

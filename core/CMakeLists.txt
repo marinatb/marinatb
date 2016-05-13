@@ -56,3 +56,19 @@ target_link_libraries( host-control
   proxygenhttpserver 
 )
 
+install(TARGETS marina-core accounts access blueprint materialization host-control
+  RUNTIME DESTINATION bin
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+)
+
+set(CPACK_GENERATOR "DEB")
+set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Ryan Goodfellow")
+set(CPACK_DEBIAN_PACKAGE_NAME "marinatb-ops")
+set(CPACK_DEBIAN_PACKAGE_VERSION "0.1-ubuntu1")
+set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "marinatb core operations services and database")
+set(CPACK_DEBIAN_PACKAGE_SECTION "devel")
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://marinatb.net")
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS "YES")
+
+include(CPack)
