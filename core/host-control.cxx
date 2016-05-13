@@ -6,11 +6,13 @@
 #include "common/net/http_server.hxx"
 #include "core/blueprint.hxx"
 #include "core/util.hxx"
+#include "3p/pipes/pipes.hxx"
 
 using std::string;
 using std::to_string;
 using std::runtime_error;
 using wangle::SSLContextConfig;
+using namespace pipes;
 using namespace marina;
 
 http::Response construct(Json);
@@ -67,7 +69,21 @@ void launchVm(string img, size_t vnc_port, size_t cores, Memory mem,
 
 http::Response construct(Json)
 {
-  throw runtime_error{"not implemented"};
+  LOG(INFO) << "construct request";
+
+  //extract request parameters
+  vector<Json> computers_json;
+  vector<Json> networks_json;
+  try
+  {
+    computers_json = j.at("computers");
+    networks_json = j.at("networks");
+
+    vector<Computer> computers = 
+      computers_json 
+      | map([](const Json &x){ return Computer::fromJson(x); };
+  }
+
 }
 
 http::Response info(Json)

@@ -81,7 +81,6 @@ http::Response construct(Json j)
 
     //call out to all of the selected materialization hosts asking them to 
     //materialize their portion of the blueprint
-    /*
     vector<future<http::Message>> replys;
     for(const Computer & c : bp.computers())
     {
@@ -91,13 +90,12 @@ http::Response construct(Json j)
         HttpRequest
         {
           HTTPMethod::POST,
-          "https://"+host+"/materialize",
+          "https://"+host+"/construct",
           c.json().dump()
         }
         .response()
       );
     }
-    */
 
     // save the embedding to the database
     db->saveMaterialization(project, bpid, bp.json());
