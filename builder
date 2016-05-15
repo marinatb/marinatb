@@ -29,7 +29,9 @@ function do_console {
 function do_run_console {
    $RUN $ARGS --hostname=$1 --name=$1 --net=tnet \
      -v `pwd`:/code \
-     --entrypoint=bash $1
+     --entrypoint=bash \
+     --dns=192.168.47.1 \
+     $1
 }
 
 function do_build_console {
@@ -47,7 +49,11 @@ function do_run {
 }
 
 function do_launch {
-  $RUN $DARGS --hostname=$1 --name=$1 --net=tnet -v `pwd`:/code $1
+  $RUN $DARGS \
+    --hostname=$1 --name=$1 --net=tnet \
+    -v `pwd`:/code \
+    --dns=192.168.47.1 \
+    $1
 }
 
 function do_terminate {
@@ -112,16 +118,21 @@ case $1 in
   #so we need to work around that for the time being, perhaps contribute a
   #build environment back to fb
   "pkg")
-    mkdir -p pkg/usr
+    rm -rf pkg
+    mkdir -p pkg/usr/local/lib
     #docker cp builder:/usr/lib pkg/usr/
+    ldd build/core/materialization |\
+    awk 'NF == 4 {print $3}; NF == 2 {print $1}' |\
+    grep local |\
+    xargs cp -t pkg/usr/local/lib/
 
-    mkdir -p pkg/usr/local
+    #mkdir -p pkg/usr/local
     #docker cp builder:/usr/local/lib pkg/usr/local/
-    cp -r /usr/local/lib pkg/usr/local
+    #cp -r /usr/local/lib pkg/usr/local
     #these monsters are only needed on the builder atm
-    rm pkg/usr/local/lib/libclang*
-    rm pkg/usr/local/lib/libLLVM*
-    rm pkg/usr/local/lib/libLTO.so
+    #rm pkg/usr/local/lib/libclang*
+    #rm pkg/usr/local/lib/libLLVM*
+    #rm pkg/usr/local/lib/libLTO.so
   ;;
 
   "host-pkg")
@@ -138,7 +149,6 @@ case $1 in
 
     tar czf host-pkg.tgz host-pkg
     rm -rf host-pkg
-
   ;;
 
   *) echo "usage build <component> [cmake|ninja|test]" ;;

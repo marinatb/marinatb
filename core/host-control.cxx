@@ -26,7 +26,7 @@ int main()
 {
   Glog::init("host-control");
 
-  LOG(INFO) << "node control starting";
+  LOG(INFO) << "host-control starting";
   
   SSLContextConfig sslc;
   sslc.setCertificate(
@@ -78,12 +78,18 @@ http::Response construct(Json j)
   vector<Json> networks_json;
   try
   {
+    /*
     computers_json = j.at("computers").get<vector<Json>>();
     networks_json = j.at("networks").get<vector<Json>>();
 
     vector<Computer> computers = 
       computers_json 
       | map([](const Json &x){ return Computer::fromJson(x); });
+    */
+
+    Json r;
+    r["status"] = "ok";
+    return http::Response{ http::Status::OK(), r.dump() };
   }
   catch(out_of_range &) { return badRequest("save", j); }
 
