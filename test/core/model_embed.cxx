@@ -17,6 +17,19 @@ using namespace marina;
 
 using namespace pipes;
 
+TEST_CASE("hello-marina", "[embed]")
+{
+  TestbedTopology t = minibed();
+  Blueprint b = hello_marina();
+
+  auto e = embed(b, t);
+
+  for(const Computer & c : b.computers())
+  {
+    cout << c.name() << " --> " << c.embedding().host << endl;
+  }
+}
+
 TEST_CASE("mars", "[launch]")
 {
   TestbedTopology t = deter2015();

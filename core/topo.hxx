@@ -203,6 +203,7 @@ namespace marina {
   {
     Embedding() = default;
     Embedding(std::string host, bool assigned);
+
     static Embedding fromJson(Json);
     std::string host{"goblin"};
     bool assigned{false};

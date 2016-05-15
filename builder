@@ -151,6 +151,16 @@ case $1 in
     rm -rf host-pkg
   ;;
 
+"deploy")
+    echo "Deploying host packages"
+    scp host-pkg.tgz murphy@mrtb0:~/
+    scp host-pkg.tgz murphy@mrtb1:~/
+
+    echo "Unpacking host packages on hosts"
+    ssh murphy@mrtb0 "tar xzf host-pkg.tgz"
+    ssh murphy@mrtb1 "tar xzf host-pkg.tgz"
+  ;;
+
   *) echo "usage build <component> [cmake|ninja|test]" ;;
 esac
 
