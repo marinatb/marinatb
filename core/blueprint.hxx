@@ -33,8 +33,12 @@ namespace marina
       std::vector<Computer> computers() const;
       std::vector<Network> networks() const;
 
+      std::vector<Network> connectedNetworks(const Computer);
+
       Computer & getComputer(std::string name) const;
       Network & getNetwork(std::string name) const;
+
+      Network getNetworkById(std::string id) const;
 
       void removeComputer(std::string name);
       void removeNetwork(std::string name); 
@@ -127,8 +131,9 @@ namespace marina
       Network & latency(Latency);
 
       //connectivity
-      Interface add_ifx();
-      std::unordered_map<std::string, Interface> & interfaces() const;
+      //Interface add_ifx();
+      //std::unordered_map<std::string, Interface> & interfaces() const;
+      std::string guid() const;
 
       Json json() const;
       Network clone() const;

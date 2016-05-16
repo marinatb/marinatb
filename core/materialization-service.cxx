@@ -78,24 +78,48 @@ http::Response construct(Json j)
     // this will fill in bp with the materialization details and return a clone 
     // of topo that bas bp emedded inside
     auto embedding = embed(bp, topo);
-
+    
     //call out to all of the selected materialization hosts asking them to 
     //materialize their portion of the blueprint
     vector<future<http::Message>> replys;
-    for(const Computer & c : bp.computers())
+    for(const Host & h : embedding.hosts())
     {
-      string host = c.embedding().host;
+      string name = h.name();
+
+      Json rq;
+      rq["computers"] = jtransform(h.experimentMachines());
+
+      vector<Network> host_networks;
+      for(const Computer & c : h.experimentMachines())
+      {
+        auto ns = bp.connectedNetworks(c);
+        //TODO again with the grossness, use a set
+        for(const Network & n : ns)
+        {
+          if(find_if(host_networks.begin(), host_networks.end(),
+                [&n](const Network & x)
+                {
+                  return n.name() == x.name();
+                }) == host_networks.end() )
+          {
+            host_networks.push_back(n);
+          }
+        }
+      }
+
+      rq["networks"] = jtransform(host_networks);
 
       replys.push_back(
         HttpRequest
         {
           HTTPMethod::POST,
-          "https://"+host+"/construct",
-          c.json().dump()
+          "https://"+name+"/construct",
+          rq.dump()
         }
         .response()
       );
     }
+
 
     // save the embedding to the database
     db->saveMaterialization(project, bpid, bp.json());

@@ -72,20 +72,29 @@ void launchVm(string img, size_t vnc_port, size_t cores, Memory mem,
 http::Response construct(Json j)
 {
   LOG(INFO) << "construct request";
+  LOG(INFO) << j.dump(2);
 
   //extract request parameters
   vector<Json> computers_json;
   vector<Json> networks_json;
   try
   {
-    /*
     computers_json = j.at("computers").get<vector<Json>>();
     networks_json = j.at("networks").get<vector<Json>>();
 
     vector<Computer> computers = 
       computers_json 
       | map([](const Json &x){ return Computer::fromJson(x); });
-    */
+
+    vector<Network> networks = 
+      networks_json
+      | map([](const Json &x){ return Network::fromJson(x); });
+
+    LOG(INFO) 
+      << "materializaing " 
+      << computers.size() 
+      << " across "
+      << networks.size();
 
     Json r;
     r["status"] = "ok";

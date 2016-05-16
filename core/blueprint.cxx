@@ -20,6 +20,7 @@ using std::vector;
 using std::to_string;
 using std::pair;
 using std::sort;
+using std::find_if;
 
 using namespace marina;
 using namespace pipes;
@@ -33,6 +34,7 @@ namespace marina
   {
     Link() = default;
     Link(Interface, Interface);
+    Link(string, string);
     static Link fromJson(Json);
 
     Json json() const;
@@ -57,7 +59,8 @@ namespace marina
     string name;
     Bandwidth bandwidth{100_mbps};
     Latency latency{0_ms};
-    unordered_map<string, Interface> interfaces;
+    //unordered_map<string, Interface> interfaces;
+    string guid =  generate_mac();
   };
 
   struct Computer_
@@ -78,10 +81,10 @@ namespace marina
     Interface_(string name) 
       : name{name} 
     {
-      mac_address = generate_mac();
+      mac = generate_mac();
     }
 
-    string name, mac_address;
+    string name, mac;
     Latency latency{0_ms};
     Bandwidth capacity{1_gbps};
   };
@@ -126,6 +129,41 @@ vector<Network> Blueprint::networks() const
   return ns;
 }
 
+
+vector<Network> Blueprint::connectedNetworks(const Computer c)
+{
+  vector<Network> result;
+  for(const auto & p : c.interfaces())
+  {
+    const Interface & i = p.second;
+    for(const Link & l : _->links)
+    {
+      if(l.endpoints[0] == i.mac())
+      {
+        Network n = getNetworkById(l.endpoints[1]);
+        //TODO gross make this a set
+        if(find_if(result.begin(), result.end(), [&n](const Network & x){
+              return n.name() == x.name();
+              }) == result.end())
+        {
+          result.push_back(n); 
+        }
+      }
+      if(l.endpoints[1] == i.mac())
+      {
+        Network n = getNetworkById(l.endpoints[0]);
+        if(find_if(result.begin(), result.end(), [&n](const Network & x){
+              return n.name() == x.name();
+              }) == result.end())
+        {
+          result.push_back(n); 
+        }
+      }
+    }
+  }
+  return result;
+}
+
 Computer & Blueprint::getComputer(string name) const 
 { 
   return _->computers.at(name); 
@@ -134,6 +172,15 @@ Computer & Blueprint::getComputer(string name) const
 Network & Blueprint::getNetwork(string name) const 
 { 
   return _->networks.at(name); 
+}
+
+Network Blueprint::getNetworkById(string guid) const
+{
+  for(Network n : networks())
+  {
+    if(n.guid() == guid) return n;
+  }
+  throw out_of_range{"network with id " + guid + " not found"};
 }
 
 void Blueprint::removeComputer(string name)
@@ -159,12 +206,14 @@ Json Blueprint::json() const
 
 void Blueprint::connect(Interface i, Network n)
 {
-  _->links.push_back({i, n.add_ifx()});
+  //_->links.push_back({i, n.add_ifx()});
+  _->links.push_back({i.mac(), n.guid()});
 }
 
 void Blueprint::connect(Network a, Network b)
 {
-  _->links.push_back({a.add_ifx(), b.add_ifx()});
+  //_->links.push_back({a.add_ifx(), b.add_ifx()});
+  _->links.push_back({a.guid(), b.guid()});
 }
 
 Blueprint Blueprint::clone() const
@@ -402,12 +451,15 @@ Network Network::fromJson(Json j)
   n.latency(Latency::fromJson(extract(j, "latency", "network")));
   n.capacity(Bandwidth::fromJson(extract(j, "capacity", "network")));
   
+  /*
   Json ifxs = extract(j, "interfaces", "network");
   for(const Json & ij : ifxs)
   {
     Interface ifx = Interface::fromJson(ij);
     n._->interfaces.insert_or_assign(ifx.name(), ifx);
   }
+  */
+  n._->guid = extract(j, "guid", "network");
 
   return n;
 }
@@ -433,6 +485,7 @@ Network & Network::latency(Latency x)
   return *this;
 }
 
+/*
 Interface Network::add_ifx()
 {
   string name = "ifx" + to_string(_->interfaces.size());
@@ -443,10 +496,18 @@ Interface Network::add_ifx()
       .latency(0_ms)
       .capacity(capacity());
 }
+*/
 
+/*
 unordered_map<string, Interface> & Network::interfaces() const
 {
   return _->interfaces;
+}
+*/
+
+string Network::guid() const
+{
+  return _->guid;
 }
 
 Json Network::json() const
@@ -455,7 +516,8 @@ Json Network::json() const
   j["name"] = name();
   j["latency"] = latency().json();
   j["capacity"] = capacity().json();
-  j["interfaces"] = jtransform(_->interfaces);
+  //j["interfaces"] = jtransform(_->interfaces);
+  j["guid"] = _->guid;
   return j;
 }
 
@@ -464,8 +526,11 @@ Network Network::clone() const
   Network n{name()};
   n._->latency = _->latency;
   n._->bandwidth = _->bandwidth;
+  /*
   for(auto x : _->interfaces)
     n._->interfaces.insert_or_assign(x.first, x.second.clone());
+    */
+  n._->guid = _->guid;
   return n;
 }
   
@@ -475,12 +540,15 @@ bool marina::operator == (const Network &a, const Network &b)
   if(a.capacity() != b.capacity()) return false;
   if(a.latency() != b.latency()) return false;
   
+  /*
   for(auto p : a.interfaces())
   {
     auto i = b.interfaces().find(p.first);
     if(i == b.interfaces().end()) return false;
     if(p.second != i->second) return false;
   }
+  */
+  if(a.guid() != b.guid()) return false;
   
   return true;
 }
@@ -608,7 +676,7 @@ Interface Interface::fromJson(Json j)
   ifx.latency(Latency::fromJson(extract(j, "latency", "interface")))
      .capacity(Bandwidth::fromJson(extract(j, "capacity", "interface")));
 
-  ifx._->mac_address = extract(j, "mac", "interface");
+  ifx._->mac = extract(j, "mac", "interface");
 
   return ifx;
 }
@@ -636,7 +704,7 @@ Interface & Interface::capacity(Bandwidth x)
 
 string Interface::mac() const
 {
-  return _->mac_address;
+  return _->mac;
 }
 
 Json Interface::json() const
@@ -652,7 +720,7 @@ Json Interface::json() const
 Interface Interface::clone() const
 {
   Interface i{name()};
-  i._->mac_address = _->mac_address;
+  i._->mac = _->mac;
   i._->latency = _->latency;
   i._->capacity = _->capacity;
   return i;
@@ -878,6 +946,10 @@ bool marina::operator!= (const Computer & a, const Computer & b)
 // Link ------------------------------------------------------------------------
 Link::Link(Interface a, Interface b)
   : endpoints{{a.mac(), b.mac()}}
+{}
+
+Link::Link(string a, string b)
+  : endpoints{{a, b}}
 {}
 
 Link Link::fromJson(Json j)
