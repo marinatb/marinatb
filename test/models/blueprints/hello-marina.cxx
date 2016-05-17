@@ -13,7 +13,7 @@ Blueprint marina::hello_marina()
   {
     return
     bp.computer(name)
-      .os("ubuntu-server-16.10")
+      .os("ubuntu-server-xenial")
       .memory(4_gb)
       .cores(2)
       .disk(10_gb)
