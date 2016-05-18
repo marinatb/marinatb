@@ -9,7 +9,7 @@ sudo qemu-system-x86_64 \
   -hda /space/images/std/ubuntu-server-xenial.qcow2 \
   -chardev socket,id=chr0,path=/var/run/openvswitch/vhost-user-1 \
   -netdev type=vhost-user,id=net0,chardev=chr0,vhostforce \
-  -device virtio-net-pci,mac=00:00:00:00:00:01,netdev=net0 \
+  -device virtio-net-pci,mac=00:00:00:00:00:03,netdev=net0 \
   -vnc 0.0.0.0:1,password \
   -monitor stdio 
   
