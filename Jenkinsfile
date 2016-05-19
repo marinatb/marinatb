@@ -14,10 +14,8 @@ node {
     stage 'Build'
 
         sh 'mkdir build'
-        sh 'cd build'
-        sh 'cmake .. -G Ninja'
+        sh 'cmake . -G Ninja'
         sh 'ninja'
-        sh 'cd ..'
 
     stage 'Integration Test'
 
