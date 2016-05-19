@@ -30,7 +30,7 @@ node {
             },
 
             'docker-network': {
-                sh './builder net'
+                sh './builder net || true'
             }
 
         )
