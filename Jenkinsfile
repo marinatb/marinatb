@@ -21,21 +21,21 @@ node {
 
     stage 'Integration Test'
 
-        parallel {
+        parallel (
 
-            containerize-system: {
+            'containerize-system': {
                 sh './builder containerize-system'
             },
 
-            containerize-test: {
+            'containerize-test': {
                 sh './builder containerize test'
             },
 
-            docker-network: {
+            'docker-network': {
                 sh './builder net'
             }
 
-        }
+        )
 
         sh './builder launch-system'
 
