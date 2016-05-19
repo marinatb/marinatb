@@ -7,5 +7,42 @@ node {
         sh 'git submodule init'
         sh 'git submodule update'
 
+    stage 'Environment Setup'
+
+        echo 'Do something'
+
+    stage 'Build'
+
+        sh 'mkdir build'
+        sh 'cd build'
+        sh 'cmake .. -G Ninja'
+        sh 'ninja'
+        sh 'cd ..'
+
+    stage 'Integration Test'
+
+        parallel {
+
+            containerize-system: {
+                sh './builder containerize-system'
+            },
+
+            containerize-test: {
+                sh './builder containerize test'
+            },
+
+            docker-network: {
+                sh './builder net'
+            }
+
+        }
+
+        sh './builder launch-system'
+
+
+    stage 'Cleanup'
+
+        sh './builder terminate-system'
+        sh 'docker network rm tnet'
 }
 
