@@ -24,22 +24,10 @@ node {
 
         sh './builder pkg'
 
-        parallel (
 
-            'containerize-system': {
-                sh './builder containerize-system'
-            },
-
-            'containerize-test': {
-                sh './builder containerize test'
-            },
-
-            'docker-network': {
-                sh './builder net || true'
-            }
-
-        )
-
+        sh './builder containerize-system'
+        sh './builder containerize test'
+        sh './builder net || true'
         sh './builder launch-system'
 
 
