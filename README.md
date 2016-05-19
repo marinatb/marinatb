@@ -30,6 +30,7 @@ ninja
 
 ### Running tests (requires docker)
 ```shell
+./builder pkg
 ./builder containerize-system   #creates containers for all system components
 ./builder net                   #creates a network that interconnects component containers
 ./builder launch-system         #launches the test system
