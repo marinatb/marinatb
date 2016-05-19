@@ -7,9 +7,11 @@ node {
         sh 'git submodule init'
         sh 'git submodule update'
 
+
     stage 'Environment Setup'
 
         echo 'Do something'
+
 
     stage 'Build'
 
@@ -17,7 +19,10 @@ node {
         sh 'cmake . -G Ninja'
         sh 'ninja'
 
+
     stage 'Integration Test'
+
+        sh './builder pkg'
 
         parallel (
 
