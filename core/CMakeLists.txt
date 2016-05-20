@@ -54,6 +54,7 @@ add_executable( host-control host-control.cxx )
 target_link_libraries( host-control
   marina-core
   proxygenhttpserver 
+  fmt
 )
 
 install(TARGETS marina-core accounts access blueprint materialization host-control

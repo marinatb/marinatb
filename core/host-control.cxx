@@ -7,6 +7,7 @@
 #include "core/blueprint.hxx"
 #include "core/util.hxx"
 #include "3p/pipes/pipes.hxx"
+#include "fmt/format.h"
 
 using std::string;
 using std::to_string;
@@ -78,6 +79,19 @@ void launchVm(string img, size_t vnc_port, size_t cores, Memory mem,
   system(cmd.c_str());
 }
 
+void createNetwork(const Network & n)
+{
+  LOG(INFO) << "creating network " << n.name();
+
+  string br_id = fmt::format("mrtb-vbr-%s", n.guid());
+
+  string cmd = fmt::format(
+    "ovs-vsctl add-br mrtb-vbr-%s --set bridge %s datapath_type=netdev", 
+    br_id, 
+    br_id
+  );
+}
+
 http::Response construct(Json j)
 {
   LOG(INFO) << "construct request";
@@ -92,7 +106,7 @@ http::Response construct(Json j)
     networks_json = j.at("networks").get<vector<Json>>();
 
     vector<Computer> computers = 
-      computers_json 
+      computers_json
       | map([](const Json &x){ return Computer::fromJson(x); });
 
     vector<Network> networks = 
@@ -104,6 +118,8 @@ http::Response construct(Json j)
       << computers.size()  << " computers"
       << " across "
       << networks.size() << " networks";
+
+    for(const Network & n : networks) createNetwork(n);
 
     Json r;
     r["status"] = "ok";
