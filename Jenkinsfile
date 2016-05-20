@@ -16,18 +16,30 @@ node {
     stage 'Build'
 
         sh 'mkdir build'
-        sh 'cmake . -G Ninja'
-        sh 'ninja'
+        sh 'cd build ; cmake .. -G Ninja'
+        sh 'cd build ; ninja'
 
 
     stage 'Integration Test'
 
         sh './builder pkg'
 
+        parallel (
 
-        sh './builder containerize-system'
-        sh './builder containerize test'
-        sh './builder net || true'
+            'containerize-system': {
+                sh './builder containerize-system'
+            },
+
+            'containerize-test': {
+                sh './builder containerize test'
+            },
+
+            'docker-network': {
+                sh './builder net || true'
+            }
+
+        )
+
         sh './builder launch-system'
 
 
