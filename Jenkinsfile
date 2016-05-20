@@ -20,7 +20,7 @@ node {
         sh 'cd build ; ninja'
 
 
-    stage 'Integration Test'
+    stage 'Test Setup'
 
         sh './builder pkg'
 
@@ -41,6 +41,11 @@ node {
         )
 
         sh './builder launch-system'
+
+
+    stage 'Integration Tests'
+
+        echo 'Actual tests to go here'
 
 
     stage 'Cleanup'
