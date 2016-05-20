@@ -85,7 +85,9 @@ http::Response construct(Json j)
     for(const Host & h : embedding.hosts())
     {
       string name = h.name();
+      Blueprint lbp = bp.localEmbedding(h.name());
 
+      /*
       Json rq;
       rq["computers"] = jtransform(h.experimentMachines());
 
@@ -108,13 +110,15 @@ http::Response construct(Json j)
       }
 
       rq["networks"] = jtransform(host_networks);
+      */
 
       replys.push_back(
         HttpRequest
         {
           HTTPMethod::POST,
           "https://"+name+"/construct",
-          rq.dump()
+          //rq.dump()
+          lbp.json().dump()
         }
         .response()
       );

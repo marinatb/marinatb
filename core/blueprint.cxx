@@ -2,7 +2,6 @@
 #include <iostream>
 #include <unordered_map>
 #include <limits>
-#include <array>
 #include <vector>
 #include <algorithm>
 #include "blueprint.hxx"
@@ -30,17 +29,6 @@ using ull = unsigned long long;
 // internal data structures ----------------------------------------------------
 namespace marina
 {
-  struct Link
-  {
-    Link() = default;
-    Link(Interface, Interface);
-    Link(string, string);
-    static Link fromJson(Json);
-
-    Json json() const;
-    
-    array<string, 2> endpoints;
-  };
 
   struct Blueprint_
   {
@@ -61,6 +49,7 @@ namespace marina
     Latency latency{0_ms};
     //unordered_map<string, Interface> interfaces;
     string guid =  generate_mac();
+    vector<Neighbor> connections;
   };
 
   struct Computer_
@@ -163,6 +152,24 @@ vector<Network> Blueprint::connectedNetworks(const Computer c)
   }
   return result;
 }
+     
+/*
+vector<Computer> Blueprint::connectedComputers(const Network n)
+{
+  vector<Computer> result;
+
+  for(const Link & l : _->links)
+  {
+    if(l.endpoints[0] == n.guid())
+    {
+      Computer c = getComputerByMac(l.endpoints[1]);
+
+    }
+  }
+
+  return result;
+}
+*/
 
 Computer & Blueprint::getComputer(string name) const 
 { 
@@ -181,6 +188,21 @@ Network Blueprint::getNetworkById(string guid) const
     if(n.guid() == guid) return n;
   }
   throw out_of_range{"network with id " + guid + " not found"};
+}
+
+Computer Blueprint::getComputerByMac(string mac) const
+{
+  for(Computer c : computers())
+  {
+    for(const auto & i : c.interfaces())
+    {
+      if(i.second.mac() == mac)
+      {
+        return c;
+      }
+    }
+  }
+  throw out_of_range{"computer with mac " + mac + " not found"};
 }
 
 void Blueprint::removeComputer(string name)
@@ -204,16 +226,82 @@ Json Blueprint::json() const
   return j;
 }
 
+const vector<Link> & Blueprint::links() const
+{
+  return _->links;
+}
+
 void Blueprint::connect(Interface i, Network n)
 {
   //_->links.push_back({i, n.add_ifx()});
   _->links.push_back({i.mac(), n.guid()});
+
+  n._->connections.push_back(
+    Neighbor{
+      Neighbor::Kind::Computer,
+      i.mac(),
+      *this
+    }
+  );
 }
 
 void Blueprint::connect(Network a, Network b)
 {
   //_->links.push_back({a.add_ifx(), b.add_ifx()});
   _->links.push_back({a.guid(), b.guid()});
+
+  a._->connections.push_back(
+    Neighbor{
+      Neighbor::Kind::Network,
+      b.guid(),
+      *this
+    }
+  );
+  
+  b._->connections.push_back(
+    Neighbor{
+      Neighbor::Kind::Network,
+      a.guid(),
+      *this
+    }
+  );
+
+}
+
+Blueprint Blueprint::localEmbedding(string host_id)
+{
+  Blueprint b{name()};
+
+  for(Computer c : computers())
+  {
+    if(c.embedding().host == host_id)
+    {
+      b._->computers.insert_or_assign(c.name(), c);
+    }
+
+    for(auto i : c.interfaces())
+    {
+      for(const Link & l : _->links)
+      {
+        if(l.endpoints[0] == i.second.mac())
+        {
+          b._->links.push_back(l);
+
+          Network n = getNetworkById(l.endpoints[1]);
+          b._->networks.insert_or_assign(n.name(), n);
+        }
+        if(l.endpoints[1] == i.second.mac())
+        {
+          b._->links.push_back(l);
+
+          Network n = getNetworkById(l.endpoints[0]);
+          b._->networks.insert_or_assign(n.name(), n);
+        }
+      }
+    }
+  }
+
+  return b;
 }
 
 Blueprint Blueprint::clone() const
@@ -508,6 +596,11 @@ unordered_map<string, Interface> & Network::interfaces() const
 string Network::guid() const
 {
   return _->guid;
+}
+
+const vector<Neighbor> & Network::connections() const
+{
+  return _->connections;
 }
 
 Json Network::json() const

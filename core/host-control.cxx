@@ -11,6 +11,7 @@
 
 using std::string;
 using std::to_string;
+using std::unique_ptr;
 using std::runtime_error;
 using std::vector;
 using std::out_of_range;
@@ -47,6 +48,33 @@ int main()
 
 }
 
+struct CmdResult
+{
+  std::string output;
+  int code{0};
+};
+
+CmdResult exec(string cmd)
+{
+  CmdResult result;
+  char buffer[1024];
+  FILE *pipe = popen(cmd.c_str(), "r");
+  if(pipe == nullptr) 
+  {
+    LOG(ERROR) << "exec popen failed for `" << cmd << "`";
+    throw runtime_error{"exec: popen failed"};
+  }
+  while(!feof(pipe))
+  {
+    if(fgets(buffer, 1024, pipe) != nullptr)
+      result.output += buffer;
+  }
+
+  int pexit = pclose(pipe);
+  result.code = WEXITSTATUS(pexit);
+  return result;
+}
+
 void makeDiskImage(string name, Memory size)
 {
   string sz;
@@ -63,33 +91,95 @@ void makeDiskImage(string name, Memory size)
 }
 
 void launchVm(string img, size_t vnc_port, size_t cores, Memory mem, 
-    size_t qmp_port)
+    size_t qmp_port, const Computer & c)
 {
-  //TODO assuming it is a standard image for now
-  //     deal with nonstandard ones later
-  string cmd = 
-    "qemu-system-x86_64" 
-    " --enable-kvm -smp " + to_string(cores) +
-    " -m " + to_string(mem.megabytes()) + 
-    " -vnc 0.0.0.0:" + to_string(vnc_port) + ",password" +
-    " -monitor stdio" + 
-    " -qmp tcp:0.0.0.0:" + to_string(qmp_port) + ",server" //TODO use qmp to set the vnc password
-    " /space/images/std/" + img;
-
-  system(cmd.c_str());
-}
-
-void createNetwork(const Network & n)
-{
-  LOG(INFO) << "creating network " << n.name();
-
-  string br_id = fmt::format("mrtb-vbr-%s", n.guid());
+  //TODO more interfaces later
+  Interface ifx = c.interfaces().begin()->second;
 
   string cmd = fmt::format(
-    "ovs-vsctl add-br mrtb-vbr-%s --set bridge %s datapath_type=netdev", 
+      "qemu-system-x86_64 \
+        --enable-kvm \
+        -cpu IvyBridge -smp %zu,sockets=%zu,cores=%zu,threads=%zu \
+        -m %zu -mem-path /dev/hugepates -mem-prealloc \
+        -object memory-backend-file,id=mem0,size=%zuM,mem-path=/dev/hugepages,share=on \
+        -numa node,memdev=mem0 -mem-prealloc \
+        -hda %s \
+        -chardev socket,id=chr0,path=/var/run/openvswitch/mrtb-vbr-%s \
+        -netdev type=vhost-user,id=net0,chardev=chr0,vhostforce \
+        -device virtio-net-pci,mac=%s,netdev=net0 \
+        -vnc 0.0.0.0:%zu,password \
+        -monitor stdio \
+        -qmp tcp:0.0.0.0:%zu,server",
+        cores, 1, 1, 1,
+        mem.megabytes(),
+        mem.megabytes(),
+        img,
+        ifx.mac(),
+        ifx.mac(),
+        vnc_port,
+        qmp_port
+  );
+
+  CmdResult cr = exec(cmd);
+
+  if(cr.code != 0)
+  {
+    LOG(ERROR) << "failed to create virtual machine";
+    LOG(ERROR) << "exit code: " << cr.code;
+    LOG(ERROR) << "output: " << cr.output;
+    throw runtime_error{"launchVm failed"};
+  }
+}
+
+void createNetworkBridge(const Network & n)
+{
+  string br_id = fmt::format("mrtb-vbr-%s", n.guid());
+  
+  LOG(INFO) << "creating net-bridge: " << n.name() << " -- " << br_id;
+
+  string cmd = fmt::format(
+    "ovs-vsctl add-br %s -- set bridge %s datapath_type=netdev", 
     br_id, 
     br_id
   );
+
+  CmdResult cr = exec(cmd);
+
+  if(cr.code != 0)
+  {
+    LOG(ERROR) << "failed to create network bridge";
+    LOG(ERROR) << "exit code: " << cr.code;
+    LOG(ERROR) << "output: " << cr.output;
+    throw runtime_error{"createNetworkBridge failed"};
+  }
+}
+
+void createComputerPort(const Network & n, string id)
+{
+  string br_id = fmt::format("mrtb-vbr-%s", n.guid());
+  string po_id = fmt::format("mrtb-vhu-%s", id);
+
+  LOG(INFO) << 
+    fmt::format("creating network port %s on network %s",
+                  id,
+                  n.name());
+ 
+  string cmd = fmt::format(
+    "ovs-vsctl add-port %s %s -- set Interface %s type=dpdkvhostuser",
+    br_id,
+    po_id,
+    po_id
+  );
+
+  CmdResult cr = exec(cmd);
+
+  if(cr.code != 0)
+  {
+    LOG(ERROR) << "createComputerPort failed";
+    LOG(ERROR) << "exit code: " << cr.code;
+    LOG(ERROR) << "output: " << cr.output;
+    throw runtime_error{"createComputerPort failed"};
+  }
 }
 
 http::Response construct(Json j)
@@ -98,13 +188,15 @@ http::Response construct(Json j)
   LOG(INFO) << j.dump(2);
 
   //extract request parameters
-  vector<Json> computers_json;
-  vector<Json> networks_json;
+  //vector<Json> computers_json;
+  //vector<Json> networks_json;
   try
   {
-    computers_json = j.at("computers").get<vector<Json>>();
-    networks_json = j.at("networks").get<vector<Json>>();
+    //computers_json = j.at("computers").get<vector<Json>>();
+    //networks_json = j.at("networks").get<vector<Json>>();
+    auto bp = Blueprint::fromJson(j); 
 
+    /*
     vector<Computer> computers = 
       computers_json
       | map([](const Json &x){ return Computer::fromJson(x); });
@@ -112,14 +204,25 @@ http::Response construct(Json j)
     vector<Network> networks = 
       networks_json
       | map([](const Json &x){ return Network::fromJson(x); });
+      */
 
     LOG(INFO) 
       << "materializaing " 
-      << computers.size()  << " computers"
+      << bp.computers().size()  << " computers"
       << " across "
-      << networks.size() << " networks";
+      << bp.networks().size() << " networks";
 
-    for(const Network & n : networks) createNetwork(n);
+    for(const Network & n : bp.networks()) 
+    {
+      createNetworkBridge(n);
+      for(const Neighbor & nbr : n.connections())
+      {
+        if(nbr.kind == Neighbor::Kind::Computer)
+        {
+          createComputerPort(n, nbr.id);
+        }
+      }
+    }
 
     Json r;
     r["status"] = "ok";
