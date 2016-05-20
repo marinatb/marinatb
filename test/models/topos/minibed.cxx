@@ -22,7 +22,10 @@ TestbedTopology marina::minibed()
           .cores(24)
           .memory(24_gb)
           .disk(240_gb)
-          .ifx(20_gbps);
+          //TODO should be ens2f0 with properties that tell marina that
+          //this interface can use dpdk so host-control automatically
+          //sets it up
+          .add_ifx("dpdk0", 10_gbps);
 
         t.connect(c, sw, 24_gbps);
      });

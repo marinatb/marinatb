@@ -178,8 +178,11 @@ namespace marina {
       Host & disk(Memory);
 
       //network interface
-      const Interface ifx() const;
-      Host & ifx(Bandwidth);
+      //const Interface ifx() const;
+      //Host & ifx(Bandwidth);
+      Interface ifx(std::string);
+      Host & add_ifx(std::string, Bandwidth);
+      Host & remove_ifx(std::string);
 
       //TODO the const here is a bit disingenuous
       std::unordered_map<std::string, Interface> & interfaces() const; 

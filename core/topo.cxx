@@ -581,6 +581,7 @@ Host & Host::cores(size_t n)
   return *this;
 }
 
+/*
 const Interface Host::ifx() const
 {
   return _->host_comp.ifx("ifx");
@@ -596,6 +597,30 @@ Host & Host::ifx(Bandwidth b)
   _->host_comp.ifx("ifx").capacity(b);
   return *this;
 }
+*/
+
+Interface Host::ifx(string name)
+{
+  return _->host_comp.ifx(name);
+}
+
+Host & Host::add_ifx(string name, Bandwidth bw)
+{
+  _->host_comp.add_ifx(name, bw, 0_ms);
+  return *this;
+}
+
+Host & Host::remove_ifx(string name)
+{
+  _->host_comp.remove_ifx(name);
+  return *this;
+}
+
+unordered_map<string, Interface> & Host::interfaces() const
+{
+  return _->host_comp.interfaces();
+}
+
 
 LoadVector Host::loadv() const
 {
@@ -615,7 +640,10 @@ LoadVector Host::loadv() const
     | map([](auto x){ return x.disk().bytes(); })
     | reduce(plus);
 
-  v.net.total = ifx().capacity().megabits();
+  for(const auto & x : interfaces())
+    v.net.total += x.second.capacity().megabits();
+
+  //v.net.total = ifx().capacity().megabits();
   v.net.used = experimentMachines()
     | map([](auto x){ return x.hwspec().net; })
     | reduce(plus);
