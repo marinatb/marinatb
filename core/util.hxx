@@ -57,6 +57,14 @@ jsonIn(std::function<http::Response(Json)>);
 http::Response badRequest(std::string path, Json & j);
 http::Response unexpectedFailure(std::string path, Json & j, std::exception &e);
 
+struct CmdResult
+{
+  std::string output;
+  int code{0};
+};
+
+CmdResult exec(std::string cmd);
+
 }
 
 #endif

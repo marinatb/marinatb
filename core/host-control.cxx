@@ -3,11 +3,11 @@
  */
 
 #include <cstdlib>
+#include <fmt/format.h>
 #include "common/net/http_server.hxx"
 #include "core/blueprint.hxx"
 #include "core/util.hxx"
 #include "3p/pipes/pipes.hxx"
-#include "fmt/format.h"
 
 using std::string;
 using std::to_string;
@@ -48,33 +48,6 @@ int main()
 
 }
 
-struct CmdResult
-{
-  std::string output;
-  int code{0};
-};
-
-CmdResult exec(string cmd)
-{
-  CmdResult result;
-  char buffer[1024];
-  FILE *pipe = popen(cmd.c_str(), "r");
-  if(pipe == nullptr) 
-  {
-    LOG(ERROR) << "exec popen failed for `" << cmd << "`";
-    throw runtime_error{"exec: popen failed"};
-  }
-  while(!feof(pipe))
-  {
-    if(fgets(buffer, 1024, pipe) != nullptr)
-      result.output += buffer;
-  }
-
-  int pexit = pclose(pipe);
-  result.code = WEXITSTATUS(pexit);
-  return result;
-}
-
 void makeDiskImage(string name, Memory size)
 {
   string sz;
@@ -97,27 +70,28 @@ void launchVm(string img, size_t vnc_port, size_t cores, Memory mem,
   Interface ifx = c.interfaces().begin()->second;
 
   string cmd = fmt::format(
-      "qemu-system-x86_64 \
-        --enable-kvm \
-        -cpu IvyBridge -smp %zu,sockets=%zu,cores=%zu,threads=%zu \
-        -m %zu -mem-path /dev/hugepates -mem-prealloc \
-        -object memory-backend-file,id=mem0,size=%zuM,mem-path=/dev/hugepages,share=on \
-        -numa node,memdev=mem0 -mem-prealloc \
-        -hda %s \
-        -chardev socket,id=chr0,path=/var/run/openvswitch/mrtb-vbr-%s \
-        -netdev type=vhost-user,id=net0,chardev=chr0,vhostforce \
-        -device virtio-net-pci,mac=%s,netdev=net0 \
-        -vnc 0.0.0.0:%zu,password \
-        -monitor stdio \
-        -qmp tcp:0.0.0.0:%zu,server",
-        cores, 1, 1, 1,
-        mem.megabytes(),
-        mem.megabytes(),
-        img,
-        ifx.mac(),
-        ifx.mac(),
-        vnc_port,
-        qmp_port
+    "qemu-system-x86_64 "
+      "--enable-kvm "
+      "-cpu IvyBridge -smp %zu,sockets=%zu,cores=%zu,threads=%zu "
+      "-m %zu -mem-path /dev/hugepates -mem-prealloc "
+      "-object "
+      " memory-backend-file,id=mem0,size=%zuM,mem-path=/dev/hugepages,share=on "
+      "-numa node,memdev=mem0 -mem-prealloc "
+      "-hda %s "
+      "-chardev socket,id=chr0,path=/var/run/openvswitch/mrtb-vbr-%s "
+      "-netdev type=vhost-user,id=net0,chardev=chr0,vhostforce "
+      "-device virtio-net-pci,mac=%s,netdev=net0 "
+      "-vnc 0.0.0.0:%zu,password "
+      "-monitor stdio "
+      "-qmp tcp:0.0.0.0:%zu,server",
+      cores, 1, 1, 1,
+      mem.megabytes(),
+      mem.megabytes(),
+      img,
+      ifx.mac(),
+      ifx.mac(),
+      vnc_port,
+      qmp_port
   );
 
   CmdResult cr = exec(cmd);
@@ -133,6 +107,7 @@ void launchVm(string img, size_t vnc_port, size_t cores, Memory mem,
 
 void createNetworkBridge(const Network & n)
 {
+  //create a bridge for the network
   string br_id = fmt::format("mrtb-vbr-%s", n.guid());
   
   LOG(INFO) << "creating net-bridge: " << n.name() << " -- " << br_id;
@@ -144,14 +119,34 @@ void createNetworkBridge(const Network & n)
   );
 
   CmdResult cr = exec(cmd);
-
   if(cr.code != 0)
   {
     LOG(ERROR) << "failed to create network bridge";
     LOG(ERROR) << "exit code: " << cr.code;
     LOG(ERROR) << "output: " << cr.output;
-    throw runtime_error{"createNetworkBridge failed"};
+    throw runtime_error{"createNetworkBridge:create failed"};
   }
+
+  //TODO xxx hardcode
+  string remote_ip{"192.168.247.2"};
+
+  //hook vxlan up to the bridge
+  cmd = fmt::format(
+    "ovs-vsctl add-port %s vxlan0 -- set Interface vxlan0 type=vxlan "
+    "options:remote_ip=%s",
+    br_id,
+    remote_ip
+  );
+
+  cr = exec(cmd);
+  if(cr.code != 0)
+  {
+    LOG(ERROR) << "failed to setup vxlan tunnel for network " << n.name();
+    LOG(ERROR) << "exit code: " << cr.code;
+    LOG(ERROR) << "output: " << cr.output;
+    throw runtime_error{"createNetworkBridge:vxlan failed"};
+  }
+
 }
 
 void createComputerPort(const Network & n, string id)
