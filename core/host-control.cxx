@@ -3,6 +3,7 @@
  */
 
 #include <cstdlib>
+#include <unordered_map>
 #include <fmt/format.h>
 #include "common/net/http_server.hxx"
 #include "core/blueprint.hxx"
@@ -11,10 +12,12 @@
 
 using std::string;
 using std::to_string;
+using std::unordered_map;
 using std::unique_ptr;
-using std::runtime_error;
 using std::vector;
+using std::runtime_error;
 using std::out_of_range;
+using std::exception;
 using wangle::SSLContextConfig;
 using namespace pipes;
 using namespace marina;
@@ -72,26 +75,24 @@ void launchVm(string img, size_t vnc_port, size_t cores, Memory mem,
   string cmd = fmt::format(
     "qemu-system-x86_64 "
       "--enable-kvm "
-      "-cpu IvyBridge -smp %zu,sockets=%zu,cores=%zu,threads=%zu "
-      "-m %zu -mem-path /dev/hugepates -mem-prealloc "
+      "-cpu IvyBridge -smp {cores},sockets=%1,cores=%1,threads=%1 "
+      "-m {mem} -mem-path /dev/hugepates -mem-prealloc "
       "-object "
-      " memory-backend-file,id=mem0,size=%zuM,mem-path=/dev/hugepages,share=on "
+      " memory-backend-file,id=mem0,size={mem}M,mem-path=/dev/hugepages,share=on "
       "-numa node,memdev=mem0 -mem-prealloc "
-      "-hda %s "
-      "-chardev socket,id=chr0,path=/var/run/openvswitch/mrtb-vbr-%s "
+      "-hda {img} "
+      "-chardev socket,id=chr0,path=/var/run/openvswitch/mrtb-vbr-{mac} "
       "-netdev type=vhost-user,id=net0,chardev=chr0,vhostforce "
-      "-device virtio-net-pci,mac=%s,netdev=net0 "
-      "-vnc 0.0.0.0:%zu,password "
+      "-device virtio-net-pci,mac={mac},netdev=net0 "
+      "-vnc 0.0.0.0:{vnc},password "
       "-monitor stdio "
-      "-qmp tcp:0.0.0.0:%zu,server",
-      cores, 1, 1, 1,
-      mem.megabytes(),
-      mem.megabytes(),
-      img,
-      ifx.mac(),
-      ifx.mac(),
-      vnc_port,
-      qmp_port
+      "-qmp tcp:0.0.0.0:{qmp},server",
+      fmt::arg("cores", cores),
+      fmt::arg("mem", mem.megabytes()),
+      fmt::arg("img", img),
+      fmt::arg("mag", ifx.mac()),
+      fmt::arg("vnc", vnc_port),
+      fmt::arg("qmp", qmp_port)
   );
 
   CmdResult cr = exec(cmd);
@@ -105,17 +106,21 @@ void launchVm(string img, size_t vnc_port, size_t cores, Memory mem,
   }
 }
 
+unordered_map<string, size_t> netid2vbr;
+
 void createNetworkBridge(const Network & n)
 {
   //create a bridge for the network
-  string br_id = fmt::format("mrtb-vbr-%s", n.guid());
+  size_t net_id = netid2vbr.size();
+  netid2vbr[n.guid()] = net_id;
+
+  string br_id = fmt::format("mrtb-vbr-{}", net_id);
   
   LOG(INFO) << "creating net-bridge: " << n.name() << " -- " << br_id;
 
   string cmd = fmt::format(
-    "ovs-vsctl add-br %s -- set bridge %s datapath_type=netdev", 
-    br_id, 
-    br_id
+    "ovs-vsctl add-br {id} -- set bridge {id} datapath_type=netdev", 
+    fmt::arg("id", br_id)
   );
 
   CmdResult cr = exec(cmd);
@@ -132,10 +137,11 @@ void createNetworkBridge(const Network & n)
 
   //hook vxlan up to the bridge
   cmd = fmt::format(
-    "ovs-vsctl add-port %s vxlan0 -- set Interface vxlan0 type=vxlan "
-    "options:remote_ip=%s",
-    br_id,
-    remote_ip
+    "ovs-vsctl add-port {id} vxlan-{gid} -- set Interface vxlan-{gid} type=vxlan "
+    "options:remote_ip={ip}",
+    fmt::arg("id", br_id),
+    fmt::arg("gid", net_id),
+    fmt::arg("ip", remote_ip)
   );
 
   cr = exec(cmd);
@@ -149,10 +155,15 @@ void createNetworkBridge(const Network & n)
 
 }
 
+unordered_map<string, size_t> mac2vhost;
+
 void createComputerPort(const Network & n, string id)
 {
-  string br_id = fmt::format("mrtb-vbr-%s", n.guid());
-  string po_id = fmt::format("mrtb-vhu-%s", id);
+  string br_id = fmt::format("mrtb-vbr-{}", netid2vbr[n.guid()]);
+
+  size_t vhost_id = mac2vhost.size();
+  mac2vhost[n.guid()] = vhost_id;
+  string po_id = fmt::format("mrtb-vhu-{}", vhost_id);
 
   LOG(INFO) << 
     fmt::format("creating network port %s on network %s",
@@ -160,10 +171,9 @@ void createComputerPort(const Network & n, string id)
                   n.name());
  
   string cmd = fmt::format(
-    "ovs-vsctl add-port %s %s -- set Interface %s type=dpdkvhostuser",
-    br_id,
-    po_id,
-    po_id
+    "ovs-vsctl add-port {bid} {pid} -- set Interface {pid} type=dpdkvhostuser",
+    fmt::arg("bid", br_id),
+    fmt::arg("pid", po_id)
   );
 
   CmdResult cr = exec(cmd);
@@ -210,7 +220,8 @@ http::Response construct(Json j)
     r["status"] = "ok";
     return http::Response{ http::Status::OK(), r.dump() };
   }
-  catch(out_of_range &) { return badRequest("save", j); }
+  catch(out_of_range &) { return badRequest("construct", j); }
+  catch(exception &e) { return unexpectedFailure("construct", j, e); }
 
 }
 
