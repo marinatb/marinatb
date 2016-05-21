@@ -182,30 +182,17 @@ http::Response construct(Json j)
   LOG(INFO) << "construct request";
   LOG(INFO) << j.dump(2);
 
-  //extract request parameters
-  //vector<Json> computers_json;
-  //vector<Json> networks_json;
   try
   {
-    //computers_json = j.at("computers").get<vector<Json>>();
-    //networks_json = j.at("networks").get<vector<Json>>();
     auto bp = Blueprint::fromJson(j); 
-
-    /*
-    vector<Computer> computers = 
-      computers_json
-      | map([](const Json &x){ return Computer::fromJson(x); });
-
-    vector<Network> networks = 
-      networks_json
-      | map([](const Json &x){ return Network::fromJson(x); });
-      */
 
     LOG(INFO) 
       << "materializaing " 
       << bp.computers().size()  << " computers"
       << " across "
       << bp.networks().size() << " networks";
+
+    google::FlushLogFiles(0);
 
     for(const Network & n : bp.networks()) 
     {
