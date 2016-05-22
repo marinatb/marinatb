@@ -78,21 +78,16 @@ namespace marina
   // Neighbor ------------------------------------------------------------------
   struct Neighbor
   {
-    enum class Kind
-    {
-      Network,
-      Computer
-    };
+    enum class Kind { Network, Computer };
 
+    Neighbor(Kind k, std::string id/*, Blueprint bp*/);
+    static Neighbor fromJson(Json);
+
+    Json json() const;
+    
     Kind kind;
     std::string id;
-    Blueprint bp;
-
-    Neighbor(Kind k, std::string id, Blueprint bp) 
-      : kind{k}, 
-        id{id},
-        bp{bp}
-    {}
+    //Blueprint bp;
   };
 
   template <class T>
@@ -198,13 +193,15 @@ namespace marina
 
   bool operator == (const Network &, const Network &);
   bool operator != (const Network &, const Network &);
-  
+ 
+  /*
   template <>
   inline 
   Network as(const Neighbor & n)
   {
     return n.bp.getNetworkById(n.id);
   }
+  */
 
   // Memory --------------------------------------------------------------------
   class Memory
@@ -331,13 +328,15 @@ namespace marina
 
   bool operator== (const Computer &, const Computer &);
   bool operator!= (const Computer &, const Computer &);
-  
+ 
+  /*
   template <>
   inline
   Computer as(const Neighbor &n)
   {
     return n.bp.getComputerByMac(n.id);
   }
+  */
 
 
 }

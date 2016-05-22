@@ -4,6 +4,7 @@
 #include <limits>
 #include <vector>
 #include <algorithm>
+#include <fmt/format.h>
 #include "blueprint.hxx"
 #include "util.hxx"
 #include "3p/pipes/pipes.hxx"
@@ -239,8 +240,8 @@ void Blueprint::connect(Interface i, Network n)
   n._->connections.push_back(
     Neighbor{
       Neighbor::Kind::Computer,
-      i.mac(),
-      *this
+      i.mac()//,
+      //*this
     }
   );
 }
@@ -253,16 +254,16 @@ void Blueprint::connect(Network a, Network b)
   a._->connections.push_back(
     Neighbor{
       Neighbor::Kind::Network,
-      b.guid(),
-      *this
+      b.guid()//,
+     // *this
     }
   );
   
   b._->connections.push_back(
     Neighbor{
       Neighbor::Kind::Network,
-      a.guid(),
-      *this
+      a.guid()//,
+    //  *this
     }
   );
 
@@ -396,6 +397,40 @@ bool marina::operator!= (const Blueprint &a, const Blueprint &b)
 {
   return !(a == b);
 }
+
+//Neighbor ---------------------------------------------------------------------
+Neighbor::Neighbor(Kind k, std::string id/*, Blueprint bp*/) 
+  : kind{k}, 
+    id{id}//,
+    //bp{bp}
+{}
+
+Neighbor Neighbor::fromJson(Json j)
+{
+  string kind = extract(j, "kind", "neighbor");
+  string id = extract(j, "id", "neighbor");
+
+  Kind kind_;
+  if(kind == "Network") kind_ = Kind::Network;
+  else if(kind == "Computer") kind_ = Kind::Computer;
+  else throw runtime_error{fmt::format("unknown neighbor kind '{}'", kind)};
+
+  return Neighbor{kind_, id};
+}
+
+Json Neighbor::json() const
+{
+  Json j;
+  switch(kind)
+  {
+    case Kind::Network: j["kind"] = "Network";
+    case Kind::Computer: j["kind"] = "Computer";
+  }
+  j["id"] = id;
+
+  return j;
+}
+
 
 // Bandwidth -------------------------------------------------------------------
 Bandwidth::Bandwidth(size_t size, Unit unit)
@@ -538,6 +573,14 @@ Network Network::fromJson(Json j)
   Network n{name};
   n.latency(Latency::fromJson(extract(j, "latency", "network")));
   n.capacity(Bandwidth::fromJson(extract(j, "capacity", "network")));
+
+  Json cnxs = extract(j, "connections", "network");
+  for(const Json & cnx : cnxs)
+  {
+    Neighbor nbr = Neighbor::fromJson(cnx);
+    n._->connections.push_back(nbr);
+  }
+
   
   /*
   Json ifxs = extract(j, "interfaces", "network");
@@ -610,6 +653,7 @@ Json Network::json() const
   j["latency"] = latency().json();
   j["capacity"] = capacity().json();
   //j["interfaces"] = jtransform(_->interfaces);
+  j["connections"] = jtransform(_->connections);
   j["guid"] = _->guid;
   return j;
 }
