@@ -14,7 +14,7 @@ Blueprint marina::hello_marina()
     return
     bp.computer(name)
       .os("ubuntu-server-xenial")
-      .memory(4_gb)
+      .memory(1_gb)
       .cores(2)
       .disk(10_gb)
       .add_ifx("ifx0", 1_gbps);

@@ -35,11 +35,8 @@ void initOvs();
  *    local volatile runtime state
  */
 
-//a map from network ids to virtual bridge numbers
-unordered_map<string, size_t> netid_vbr_map;
-
-//a map from mac addresses to virtual host port numbers
-unordered_map<string, size_t> mac_vhost_map;
+/*    bridge info   */
+LinearIdCacheMap<string, size_t> bridgeId, vhostId;
 
 /*
  *    command line flags
@@ -140,6 +137,8 @@ void initOvs()
   cr = exec("iptables -F");
   if(cr.code != 0) execFail(cr, "failed to flush iptables");
 
+  LOG(INFO) << "ovs ready";
+
 }
 
 void makeDiskImage(string name, Memory size)
@@ -157,18 +156,20 @@ void makeDiskImage(string name, Memory size)
   system(cmd.c_str());
 }
 
-void launchVm(string img, size_t vnc_port, size_t cores, Memory mem, 
-    size_t qmp_port, const Computer & c)
+void launchVm(const Computer & c)
 {
   //TODO more interfaces later
   Interface ifx = c.interfaces().begin()->second;
 
-  size_t vhid = mac_vhost_map[ifx.mac()];
+  //TODO come up with an actual image naming/storage mech
+  string img = fmt::format("/space/images/std/{}.qcow2", c.os());
+
+  size_t vhid = vhostId.get(ifx.mac());
 
   string cmd = fmt::format(
     "qemu-system-x86_64 "
       "--enable-kvm "
-      "-cpu IvyBridge -smp {cores},sockets=%1,cores=%1,threads=%1 "
+      "-cpu IvyBridge -smp {cores},sockets=1,cores={cores},threads=1 "
       "-m {mem} -mem-path /dev/hugepages -mem-prealloc "
       "-object "
       " memory-backend-file,id=mem0,size={mem}M,mem-path=/dev/hugepages,share=on "
@@ -177,19 +178,15 @@ void launchVm(string img, size_t vnc_port, size_t cores, Memory mem,
       "-chardev socket,id=chr0,path=/var/run/openvswitch/mrtb-vhu-{vhid} "
       "-netdev type=vhost-user,id=net0,chardev=chr0,vhostforce "
       "-device virtio-net-pci,mac={mac},netdev=net0 "
-      //"-vnc 0.0.0.0:{vnc},password "
-      "-vnc 0.0.0.0:{vnc} "
-      "-D /tmp/qemu-log-{logname}",
-      //"-monitor stdio "
-      //"-qmp tcp:0.0.0.0:{qmp},server",
-      fmt::arg("cores", cores),
-      fmt::arg("mem", mem.megabytes()),
+      "-vnc 0.0.0.0:{vhid} "
+      "-D /tmp/mrtb-qlog-{vhid} "
+      "-daemonize "
+      "-pidfile /tmp/mrtb-qemu-{vhid}",
+      fmt::arg("cores", c.cores()),
+      fmt::arg("mem", c.memory().megabytes()),
       fmt::arg("img", img),
       fmt::arg("vhid", vhid),
-      fmt::arg("mac", ifx.mac()),
-      fmt::arg("vnc", vnc_port),
-      fmt::arg("qmp", qmp_port),
-      fmt::arg("logname", c.name())
+      fmt::arg("mac", ifx.mac())
   );
 
   CmdResult cr = exec(cmd);
@@ -207,8 +204,7 @@ void launchVm(string img, size_t vnc_port, size_t cores, Memory mem,
 void createNetworkBridge(const Network & n)
 {
   //create a bridge for the network
-  size_t net_id = netid_vbr_map.size();
-  netid_vbr_map[n.guid()] = net_id;
+  size_t net_id = bridgeId.create(n.guid());
   LOG(INFO) << n.name()<<"("<<n.guid()<<") --> " << net_id;
 
   string br_id = fmt::format("mrtb-vbr-{}", net_id);
@@ -254,13 +250,9 @@ void createNetworkBridge(const Network & n)
 
 void createComputerPort(const Network & n, string id)
 {
-  string br_id = fmt::format("mrtb-vbr-{}", netid_vbr_map[n.guid()]);
+  string br_id = fmt::format("mrtb-vbr-{}", bridgeId.get(n.guid()));
 
-  //if the port already exists don't try to create it again
-  if(mac_vhost_map.find(id) != mac_vhost_map.end()) return;
-
-  size_t vhost_id = mac_vhost_map.size();
-  mac_vhost_map[id] = vhost_id;
+  size_t vhost_id = vhostId.create(id);
   string po_id = fmt::format("mrtb-vhu-{}", vhost_id);
 
   LOG(INFO) << 
@@ -312,6 +304,10 @@ http::Response construct(Json j)
           createComputerPort(n, nbr.id);
         }
       }
+    }
+    for(const Computer & c : bp.computers())
+    {
+      launchVm(c);
     }
 
     Json r;

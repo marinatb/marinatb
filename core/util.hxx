@@ -65,6 +65,24 @@ struct CmdResult
 
 CmdResult exec(std::string cmd);
 
+template <class Key, class Value>
+class LinearIdCacheMap
+{
+  public:
+    Value create(Key key)
+    {
+      if(m_.find(key) != m_.end()) return m_.at(key);
+
+      return m_[key] = v_++;
+    }
+
+    Value get(Key key) { return m_.at(key); }
+
+  private:
+    Value v_{};
+    std::unordered_map<Key, Value> m_;
+};
+
 }
 
 #endif
