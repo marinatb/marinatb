@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <unordered_map>
 #include <fmt/format.h>
+#include <gflags/gflags.h>
 #include "common/net/http_server.hxx"
 #include "core/blueprint.hxx"
 #include "core/util.hxx"
@@ -27,11 +28,46 @@ http::Response destruct(Json);
 http::Response info(Json);
 http::Response list(Json);
 
-int main()
+void execFail(const CmdResult &, string);
+void initOvs();
+
+/*
+ *    local volatile runtime state
+ */
+
+//a map from network ids to virtual bridge numbers
+unordered_map<string, size_t> netid_vbr_map;
+
+//a map from mac addresses to virtual host port numbers
+unordered_map<string, size_t> mac_vhost_map;
+
+/*
+ *    command line flags
+ */
+DEFINE_string(
+  pbr_mac, 
+  "00:00:00:00:0B:AD", 
+  "the physical dpdk bridge mac address to use"
+);
+
+DEFINE_string(
+  pbr_addr,
+  "192.168.247.1/24",
+  "the physical dpdk bridge ip address to use"
+);
+
+
+
+int main(int argc, char **argv)
 {
   Glog::init("host-control");
-
   LOG(INFO) << "host-control starting";
+
+  gflags::SetUsageMessage(
+      "usage: host-control -pbr_mac <mac> -pbr_addr <addr>");
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
+
+  initOvs();
   
   SSLContextConfig sslc;
   sslc.setCertificate(
@@ -48,6 +84,61 @@ int main()
   srv.onPost("/list", jsonIn(list));
 
   srv.run();
+}
+
+void execFail(const CmdResult & cr, string msg)
+{
+  LOG(ERROR) << msg;
+  LOG(ERROR) << "exit code: " << cr.code;
+  LOG(ERROR) << "output: " << cr.output;
+  throw runtime_error{"launchVm failed"};
+}
+
+void initOvs()
+{
+  LOG(INFO) << "wiping any old ovs config";
+  
+  exec("service openvswitch-switch stop");
+  exec("rm -rf /var/log/openvswitch/* /etc/openvswitch/conf.db");
+  CmdResult cr = exec("service openvswitch-switch start");
+  if(cr.code != 0) execFail(cr, "failed to clean start openvswitch");
+
+  // create the physical bridge
+  LOG(INFO) << "setting up physical bridge";
+  cr = exec(
+    fmt::format(
+      "ovs-vsctl add-br mrtb-pbr "
+      "-- set bridge mrtb-pbr datapath_type=netdev "
+      "other_config:hwaddr={pmac}",
+      fmt::arg("pmac", FLAGS_pbr_mac) 
+    )
+  );
+  if(cr.code != 0) execFail(cr, "failed to create physical bridge");
+
+  // hook up dpdk
+  cr = exec(
+    "ovs-vsctl add-port mrtb-pbr dpdk0 -- set Interface dpdk0 type=dpdk"
+  );
+  if(cr.code != 0) 
+    execFail(cr, "failed to add dpdk interface to physical bridge");
+
+  // give the bridge an address
+  cr = exec(
+    fmt::format(
+      "ip addr add {paddr} dev mrtb-pbr",
+      fmt::arg("paddr", FLAGS_pbr_addr)
+    )
+  );
+  if(cr.code != 0) 
+    execFail(cr, "failed to give physical bridge an ip address");
+
+  // bring physical bridge up
+  cr = exec("ip link set mrtb-pbr up");
+  if(cr.code != 0) execFail(cr, "failed to bring physical bridge up");
+
+  // flush iptables
+  cr = exec("iptables -F");
+  if(cr.code != 0) execFail(cr, "failed to flush iptables");
 
 }
 
@@ -106,13 +197,12 @@ void launchVm(string img, size_t vnc_port, size_t cores, Memory mem,
   }
 }
 
-unordered_map<string, size_t> netid2vbr;
 
 void createNetworkBridge(const Network & n)
 {
   //create a bridge for the network
-  size_t net_id = netid2vbr.size();
-  netid2vbr[n.guid()] = net_id;
+  size_t net_id = netid_vbr_map.size();
+  netid_vbr_map[n.guid()] = net_id;
 
   string br_id = fmt::format("mrtb-vbr-{}", net_id);
   
@@ -137,7 +227,8 @@ void createNetworkBridge(const Network & n)
 
   //hook vxlan up to the bridge
   cmd = fmt::format(
-    "ovs-vsctl add-port {id} vxlan-{gid} -- set Interface vxlan-{gid} type=vxlan "
+    "ovs-vsctl add-port {id} vxlan-{gid} "
+    "-- set Interface vxlan-{gid} type=vxlan "
     "options:remote_ip={ip}",
     fmt::arg("id", br_id),
     fmt::arg("gid", net_id),
@@ -155,14 +246,12 @@ void createNetworkBridge(const Network & n)
 
 }
 
-unordered_map<string, size_t> mac2vhost;
-
 void createComputerPort(const Network & n, string id)
 {
-  string br_id = fmt::format("mrtb-vbr-{}", netid2vbr[n.guid()]);
+  string br_id = fmt::format("mrtb-vbr-{}", netid_vbr_map[n.guid()]);
 
-  size_t vhost_id = mac2vhost.size();
-  mac2vhost[n.guid()] = vhost_id;
+  size_t vhost_id = mac_vhost_map.size();
+  mac_vhost_map[n.guid()] = vhost_id;
   string po_id = fmt::format("mrtb-vhu-{}", vhost_id);
 
   LOG(INFO) << 

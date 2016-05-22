@@ -159,6 +159,11 @@ namespace marina
   // Network --------------------------------------------------------------------
   class Network
   {
+    struct LocalEmbeddingInfo
+    {
+      size_t bridge_id;
+    };
+
     public:
       Network(std::string);
       static Network fromJson(Json);
