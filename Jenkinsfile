@@ -45,7 +45,8 @@ node {
 
     stage 'Integration Tests'
 
-        echo 'Actual tests to go here'
+        sh 'docker run --privileged -i -t --hostname=builder --net=tnet -v `pwd`:/code --rm test [api-blueprint]'
+        sh 'docker run --privileged -i -t --hostname=builder --net=tnet -v `pwd`:/code --rm test [api-mzn]'
 
 
     stage 'Cleanup'
