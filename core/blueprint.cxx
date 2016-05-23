@@ -278,25 +278,25 @@ Blueprint Blueprint::localEmbedding(string host_id)
     if(c.embedding().host == host_id)
     {
       b._->computers.insert_or_assign(c.name(), c);
-    }
 
-    for(auto i : c.interfaces())
-    {
-      for(const Link & l : _->links)
+      for(auto i : c.interfaces())
       {
-        if(l.endpoints[0] == i.second.mac())
+        for(const Link & l : _->links)
         {
-          b._->links.push_back(l);
+          if(l.endpoints[0] == i.second.mac())
+          {
+            b._->links.push_back(l);
 
-          Network n = getNetworkById(l.endpoints[1]);
-          b._->networks.insert_or_assign(n.name(), n);
-        }
-        if(l.endpoints[1] == i.second.mac())
-        {
-          b._->links.push_back(l);
+            Network n = getNetworkById(l.endpoints[1]);
+            b._->networks.insert_or_assign(n.name(), n);
+          }
+          if(l.endpoints[1] == i.second.mac())
+          {
+            b._->links.push_back(l);
 
-          Network n = getNetworkById(l.endpoints[0]);
-          b._->networks.insert_or_assign(n.name(), n);
+            Network n = getNetworkById(l.endpoints[0]);
+            b._->networks.insert_or_assign(n.name(), n);
+          }
         }
       }
     }
