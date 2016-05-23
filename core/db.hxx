@@ -31,6 +31,10 @@ namespace marina
       TestbedTopology fetchHwTopo();
       void deleteHwTopo();
 
+      //vxlan
+      size_t newVxlanVni(std::string netid);
+      void freeVxlanVni(std::string netid);
+
 
     private:
       std::string address_;

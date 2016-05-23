@@ -78,7 +78,18 @@ http::Response construct(Json j)
     // this will fill in bp with the materialization details and return a clone 
     // of topo that bas bp emedded inside
     auto embedding = embed(bp, topo);
-    
+
+    //TODO this is a centralized database attribute for now
+    //however in the future this should be a distributed agreement variable
+    //among the host-controllers because at this level we really shouldn't
+    //care about such a materialization implementation detail. Maybehapps
+    //this could be a place to use riak/redis/memcached @ the host-controller 
+    //level
+    for(Network & n : bp.networks())
+    {
+      n.einfo().vni = db->newVxlanVni(n.guid());
+    }
+
     //call out to all of the selected materialization hosts asking them to 
     //materialize their portion of the blueprint
     vector<future<http::Message>> replys;

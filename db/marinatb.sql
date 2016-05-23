@@ -31,6 +31,11 @@ CREATE TABLE hw_topology (
   UNIQUE (id)
 );
 
+CREATE TABLE vxlan (
+  netid text PRIMARY KEY,
+  vni SERIAL
+);
+
 INSERT INTO users (name) values ('murphy');
 INSERT INTO projects (name, owner) values(
   'backyard', 

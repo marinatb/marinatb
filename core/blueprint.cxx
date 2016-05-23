@@ -51,6 +51,7 @@ namespace marina
     //unordered_map<string, Interface> interfaces;
     string guid =  generate_mac();
     vector<Neighbor> connections;
+    Network::EmbeddingInfo einfo;
   };
 
   struct Computer_
@@ -592,6 +593,9 @@ Network Network::fromJson(Json j)
   */
   n._->guid = extract(j, "guid", "network");
 
+  Json einfo = extract(j, "einfo", "network");
+  n._->einfo.vni = extract(einfo, "vni", "einfo");
+
   return n;
 }
 
@@ -646,6 +650,11 @@ const vector<Neighbor> & Network::connections() const
   return _->connections;
 }
 
+Network::EmbeddingInfo & Network::einfo() const
+{
+  return _->einfo;
+}
+
 Json Network::json() const
 {
   Json j;
@@ -655,6 +664,7 @@ Json Network::json() const
   //j["interfaces"] = jtransform(_->interfaces);
   j["connections"] = jtransform(_->connections);
   j["guid"] = _->guid;
+  j["einfo"]["vni"] = _->einfo.vni;
   return j;
 }
 
@@ -668,6 +678,7 @@ Network Network::clone() const
     n._->interfaces.insert_or_assign(x.first, x.second.clone());
     */
   n._->guid = _->guid;
+  n._->einfo = _->einfo;
   return n;
 }
   

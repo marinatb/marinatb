@@ -154,12 +154,13 @@ namespace marina
   // Network --------------------------------------------------------------------
   class Network
   {
-    struct LocalEmbeddingInfo
-    {
-      size_t bridge_id;
-    };
-
     public:
+      struct EmbeddingInfo
+      {
+        // vxlan network identifier
+        size_t vni{0};
+      };
+
       Network(std::string);
       static Network fromJson(Json);
 
@@ -181,6 +182,8 @@ namespace marina
       std::string guid() const;
 
       const std::vector<Neighbor> & connections() const;
+
+      EmbeddingInfo & einfo() const;
 
       Json json() const;
       Network clone() const;

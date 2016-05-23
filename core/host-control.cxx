@@ -2,6 +2,9 @@
  * The marina testbed host-control service implementation
  */
 
+//TODO: acutally use QCOW2 instead of copying a new image from base for each
+//      experiment node
+
 #include <cstdlib>
 #include <unordered_map>
 #include <fmt/format.h>
@@ -280,10 +283,11 @@ void createNetworkBridge(const Network & n)
   cmd = fmt::format(
     "ovs-vsctl add-port {id} {vxid} "
     "-- set Interface {vxid} type=vxlan "
-    "options:remote_ip={ip}",
+    "options:remote_ip={ip} options:key={vni}",
     fmt::arg("id", br_id),
     fmt::arg("vxid", vx_id),
-    fmt::arg("ip", remote_ip)
+    fmt::arg("ip", remote_ip),
+    fmt::arg("vni", n.einfo().vni)
   );
 
   cr = exec(cmd);
