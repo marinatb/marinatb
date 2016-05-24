@@ -2,6 +2,7 @@
 #define _LIBDNA_LIB_ENV_
 
 #include <memory>
+#include <array>
 #include <unordered_map>
 #include <3p/json/src/json.hpp>
 
@@ -13,6 +14,19 @@ namespace marina
   class Computer;
   class Interface;
   using Json = nlohmann::json; 
+  
+  struct Link
+  {
+    Link() = default;
+    Link(Interface, Interface);
+    Link(std::string, std::string);
+    static Link fromJson(Json);
+
+    Json json() const;
+    
+    std::array<std::string, 2> endpoints;
+  };
+
 
   // Blueprint -----------------------------------------------------------------
   class Blueprint
@@ -25,26 +39,37 @@ namespace marina
       std::string name() const;
       Blueprint & name(std::string);
 
+      //id a UUID that uniquely identifies this blueprint in the universe of
+      //all possible blueprints
+      std::string id() const;
+
+      //component constructors
       Network network(std::string name);
       Computer computer(std::string name);
 
+      //component access
       //TODO transition the underlying data structure to a map from a set
       //and provide a call that returns a const refrerence to the set here
       std::vector<Computer> computers() const;
       std::vector<Network> networks() const;
-
       std::vector<Network> connectedNetworks(const Computer);
-
+      //std::vector<Computer> connectedComputers(const Network);
       Computer & getComputer(std::string name) const;
       Network & getNetwork(std::string name) const;
-
       Network getNetworkById(std::string id) const;
+      Computer getComputerByMac(std::string mac) const;
 
+      //component removal
       void removeComputer(std::string name);
       void removeNetwork(std::string name); 
 
+      //component connection
+      const std::vector<Link> & links() const;
       void connect(Interface, Network);
       void connect(Network, Network);
+
+      //embedding
+      Blueprint localEmbedding(std::string host_id);
 
       Json json() const;
 
@@ -53,6 +78,25 @@ namespace marina
     private:
       std::shared_ptr<struct Blueprint_> _;
   };
+ 
+  // Neighbor ------------------------------------------------------------------
+  struct Neighbor
+  {
+    enum class Kind { Network, Computer };
+
+    Neighbor(Kind k, std::string id/*, Blueprint bp*/);
+    static Neighbor fromJson(Json);
+
+    Json json() const;
+    
+    Kind kind;
+    std::string id;
+    //Blueprint bp;
+  };
+
+  template <class T>
+  T as(const Neighbor &);
+
 
   bool operator== (const Blueprint &, const Blueprint &);
   bool operator!= (const Blueprint &, const Blueprint &);
@@ -115,6 +159,12 @@ namespace marina
   class Network
   {
     public:
+      struct EmbeddingInfo
+      {
+        // vxlan network identifier
+        size_t vni{0};
+      };
+
       Network(std::string);
       static Network fromJson(Json);
 
@@ -130,13 +180,16 @@ namespace marina
       const Latency latency() const;
       Network & latency(Latency);
 
-      //connectivity
-      //Interface add_ifx();
-      //std::unordered_map<std::string, Interface> & interfaces() const;
       std::string guid() const;
+
+      const std::vector<Neighbor> & connections() const;
+
+      EmbeddingInfo & einfo() const;
 
       Json json() const;
       Network clone() const;
+
+      friend Blueprint;
 
     private:
       std::shared_ptr<struct Network_> _;
@@ -144,8 +197,8 @@ namespace marina
 
   bool operator == (const Network &, const Network &);
   bool operator != (const Network &, const Network &);
-
-  // Memory -----------------------------------------------------------------------
+ 
+  // Memory --------------------------------------------------------------------
   class Memory
   {
     public:
@@ -197,6 +250,7 @@ namespace marina
       Json json() const;
 
       Interface clone() const;
+
     private:
       std::shared_ptr<struct Interface_> _;
   };
@@ -269,7 +323,7 @@ namespace marina
 
   bool operator== (const Computer &, const Computer &);
   bool operator!= (const Computer &, const Computer &);
-
+ 
 }
 
 namespace std

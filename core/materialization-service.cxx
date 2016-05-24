@@ -78,43 +78,33 @@ http::Response construct(Json j)
     // this will fill in bp with the materialization details and return a clone 
     // of topo that bas bp emedded inside
     auto embedding = embed(bp, topo);
-    
+
+    //TODO this is a centralized database attribute for now
+    //however in the future this should be a distributed agreement variable
+    //among the host-controllers because at this level we really shouldn't
+    //care about such a materialization implementation detail. Maybehapps
+    //this could be a place to use riak/redis/memcached @ the host-controller 
+    //level
+    for(Network & n : bp.networks())
+    {
+      n.einfo().vni = db->newVxlanVni(n.guid());
+    }
+
     //call out to all of the selected materialization hosts asking them to 
     //materialize their portion of the blueprint
     vector<future<http::Message>> replys;
     for(const Host & h : embedding.hosts())
     {
       string name = h.name();
-
-      Json rq;
-      rq["computers"] = jtransform(h.experimentMachines());
-
-      vector<Network> host_networks;
-      for(const Computer & c : h.experimentMachines())
-      {
-        auto ns = bp.connectedNetworks(c);
-        //TODO again with the grossness, use a set
-        for(const Network & n : ns)
-        {
-          if(find_if(host_networks.begin(), host_networks.end(),
-                [&n](const Network & x)
-                {
-                  return n.name() == x.name();
-                }) == host_networks.end() )
-          {
-            host_networks.push_back(n);
-          }
-        }
-      }
-
-      rq["networks"] = jtransform(host_networks);
+      Blueprint lbp = bp.localEmbedding(h.name());
 
       replys.push_back(
         HttpRequest
         {
           HTTPMethod::POST,
           "https://"+name+"/construct",
-          rq.dump()
+          //rq.dump()
+          lbp.json().dump()
         }
         .response()
       );

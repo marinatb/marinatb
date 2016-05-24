@@ -9,6 +9,7 @@ add_executable( core-test
   ../catchme.cxx
   model_embed.cxx
   jsonification.cxx
+  exec.cxx
 )
 
 target_link_libraries( core-test

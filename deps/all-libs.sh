@@ -11,4 +11,5 @@ set -e
 ./folly.sh
 ./wangle.sh
 ./proxygen.sh
+./fmt.sh
 

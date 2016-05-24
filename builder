@@ -1,5 +1,29 @@
 #!/bin/bash
 
+read -d '' USAGE <<- "EOF"
+  usage: builder <cmd>
+  cmd:
+    node-level:
+      containerize <target>   -- build the container for the component 'target'
+      console <target>        -- get a console in a running target
+      run-console <target>    -- launch 'target' and run a console in it 
+      launch <target>         -- launch 'target'
+      terminate <target>      -- terminate a running 'target'
+      restart <target>        -- terminate and launch a running 'target'
+
+    system-level:
+      containerize-system     -- build all system containers
+      launch-system           -- launch the whole system
+      terminate-system        -- terminate the whole system
+      restart-system          -- restart the whole system
+      net                     -- create the ops network
+
+    development:
+      pkg                     -- package up all deps of the core ops components.
+      host-pkg                -- create a host-control package (host-pkg.tgz)
+      deploy                  -- deploy host-pkg to the host nodes and unpack
+EOF
+
 ARGS="-ti --rm --privileged"
 DARGS="-d --privileged"
 CMAKE="cmake"
@@ -40,6 +64,7 @@ function do_build_console {
      --entrypoint=bash marinatb/builder
 }
 
+#unused?
 function do_run {
   TGT=$1
   shift
@@ -161,6 +186,6 @@ case $1 in
     ssh murphy@mrtb1 "tar xzf host-pkg.tgz"
   ;;
 
-  *) echo "usage build <component> [cmake|ninja|test]" ;;
+  *) echo "$USAGE" ;;
 esac
 

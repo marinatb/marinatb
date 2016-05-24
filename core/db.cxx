@@ -1,10 +1,14 @@
+//TODO: update stringstream based queries to fmt::format ones
+
 #include <unistd.h>
 #include <stdexcept>
 #include <sstream>
+#include <fmt/format.h>
 #include "util.hxx"
 #include "core/db.hxx"
 
 using std::string;
+using std::stoul;
 using std::runtime_error;
 using std::out_of_range;
 using std::move;
@@ -289,6 +293,33 @@ TestbedTopology DB::fetchHwTopo()
 }
 
 void DB::deleteHwTopo()
+{
+  throw runtime_error{"not implemented"};
+}
+
+size_t DB::newVxlanVni(string netid)
+{
+  string q = fmt::format(
+    "INSERT INTO vxlan (netid) values('{}') RETURNING vni",
+    netid
+  );
+
+  PGresult *res = PQexec(conn_, q.c_str());
+  if(PQresultStatus(res) != PGRES_TUPLES_OK)
+  {
+    LOG(ERROR) << "creating new vxlan vni failed";
+    LOG(ERROR) << PQerrorMessage(conn_);
+    PQclear(res);
+    throw runtime_error{"pq query failure"};
+  }
+
+  string sv{PQgetvalue(res, 0, 0)};
+
+  PQclear(res);
+  return stoul(sv);
+}
+
+void freeVxlanVni(string /*netid*/)
 {
   throw runtime_error{"not implemented"};
 }

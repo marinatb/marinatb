@@ -24,6 +24,7 @@ target_link_libraries( marina-core
   marinatb-common 
   pq
   uuid
+  fmt
 )
 
 add_executable( accounts accounts.cxx )
