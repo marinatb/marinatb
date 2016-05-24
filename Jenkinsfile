@@ -45,8 +45,8 @@ node {
 
     stage 'Integration Tests'
 
-        sh 'docker run --privileged -i -t --hostname=builder --net=tnet -v `pwd`:/code --rm test [api-blueprint]'
-        sh 'docker run --privileged -i -t --hostname=builder --net=tnet -v `pwd`:/code --rm test [api-mzn]'
+        sh 'docker run --privileged --hostname=builder --net=tnet -v `pwd`:/code --rm test [api-blueprint]'
+        sh 'docker run --privileged --hostname=builder --net=tnet -v `pwd`:/code --rm test [api-mzn]'
 
 
     stage 'Cleanup'
