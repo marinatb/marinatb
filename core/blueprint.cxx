@@ -620,26 +620,6 @@ Network & Network::latency(Latency x)
   return *this;
 }
 
-/*
-Interface Network::add_ifx()
-{
-  string name = "ifx" + to_string(_->interfaces.size());
-
-  return 
-  _->interfaces
-    .emplace( make_pair(name, name) ).first->second
-      .latency(0_ms)
-      .capacity(capacity());
-}
-*/
-
-/*
-unordered_map<string, Interface> & Network::interfaces() const
-{
-  return _->interfaces;
-}
-*/
-
 string Network::guid() const
 {
   return _->guid;
@@ -661,7 +641,6 @@ Json Network::json() const
   j["name"] = name();
   j["latency"] = latency().json();
   j["capacity"] = capacity().json();
-  //j["interfaces"] = jtransform(_->interfaces);
   j["connections"] = jtransform(_->connections);
   j["guid"] = _->guid;
   j["einfo"]["vni"] = _->einfo.vni;
@@ -673,10 +652,6 @@ Network Network::clone() const
   Network n{name()};
   n._->latency = _->latency;
   n._->bandwidth = _->bandwidth;
-  /*
-  for(auto x : _->interfaces)
-    n._->interfaces.insert_or_assign(x.first, x.second.clone());
-    */
   n._->guid = _->guid;
   n._->einfo = _->einfo;
   return n;
@@ -687,15 +662,6 @@ bool marina::operator == (const Network &a, const Network &b)
   if(a.name() != b.name()) return false;
   if(a.capacity() != b.capacity()) return false;
   if(a.latency() != b.latency()) return false;
-  
-  /*
-  for(auto p : a.interfaces())
-  {
-    auto i = b.interfaces().find(p.first);
-    if(i == b.interfaces().end()) return false;
-    if(p.second != i->second) return false;
-  }
-  */
   if(a.guid() != b.guid()) return false;
   
   return true;

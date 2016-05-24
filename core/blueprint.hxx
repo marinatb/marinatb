@@ -176,9 +176,6 @@ namespace marina
       const Latency latency() const;
       Network & latency(Latency);
 
-      //connectivity
-      //Interface add_ifx();
-      //std::unordered_map<std::string, Interface> & interfaces() const;
       std::string guid() const;
 
       const std::vector<Neighbor> & connections() const;
@@ -197,15 +194,6 @@ namespace marina
   bool operator == (const Network &, const Network &);
   bool operator != (const Network &, const Network &);
  
-  /*
-  template <>
-  inline 
-  Network as(const Neighbor & n)
-  {
-    return n.bp.getNetworkById(n.id);
-  }
-  */
-
   // Memory --------------------------------------------------------------------
   class Memory
   {
@@ -332,16 +320,6 @@ namespace marina
   bool operator== (const Computer &, const Computer &);
   bool operator!= (const Computer &, const Computer &);
  
-  /*
-  template <>
-  inline
-  Computer as(const Neighbor &n)
-  {
-    return n.bp.getComputerByMac(n.id);
-  }
-  */
-
-
 }
 
 namespace std

@@ -98,31 +98,6 @@ http::Response construct(Json j)
       string name = h.name();
       Blueprint lbp = bp.localEmbedding(h.name());
 
-      /*
-      Json rq;
-      rq["computers"] = jtransform(h.experimentMachines());
-
-      vector<Network> host_networks;
-      for(const Computer & c : h.experimentMachines())
-      {
-        auto ns = bp.connectedNetworks(c);
-        //TODO again with the grossness, use a set
-        for(const Network & n : ns)
-        {
-          if(find_if(host_networks.begin(), host_networks.end(),
-                [&n](const Network & x)
-                {
-                  return n.name() == x.name();
-                }) == host_networks.end() )
-          {
-            host_networks.push_back(n);
-          }
-        }
-      }
-
-      rq["networks"] = jtransform(host_networks);
-      */
-
       replys.push_back(
         HttpRequest
         {

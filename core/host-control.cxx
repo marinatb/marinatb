@@ -179,11 +179,6 @@ void makeDiskImage(string name, Memory size)
 
 void launchVm(const Computer & c)
 {
-  //TODO more interfaces later
-  //Interface ifx_ = c.interfaces().begin()->second;
-  
-  //size_t vhid = vhostId.get(ifx_.mac());
-  //size_t qk_id = qkId.create(ifx_.mac());
   size_t qk_id = qkId.create(c.interfaces().begin()->second.mac());
 
   //create qemu interfaces
@@ -234,9 +229,6 @@ void launchVm(const Computer & c)
       "-numa node,memdev=mem0 -mem-prealloc "
       "-hda {img} "
       "{netblk} "
-      //"-chardev socket,id=chr0,path=/var/run/openvswitch/mrtb-vhu-{vhid} "
-      //"-netdev type=vhost-user,id=net0,chardev=chr0,vhostforce "
-      //"-device virtio-net-pci,mac={mac},netdev=net0 "
       "-vnc 0.0.0.0:{qkid} "
       "-D /tmp/mrtb-qlog-{qkid} "
       "-daemonize "
@@ -244,9 +236,7 @@ void launchVm(const Computer & c)
       fmt::arg("cores", c.cores()),
       fmt::arg("mem", c.memory().megabytes()),
       fmt::arg("img", img),
-      //fmt::arg("vhid", vhid),
       fmt::arg("qkid", qk_id),
-      //fmt::arg("mac", ifx.mac()),
       fmt::arg("netblk", netblk)
   );
 
