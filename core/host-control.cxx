@@ -2,9 +2,6 @@
  * The marina testbed host-control service implementation
  */
 
-//TODO: acutally use QCOW2 instead of copying a new image from base for each
-//      experiment node
-
 #include <cstdlib>
 #include <unordered_map>
 #include <fmt/format.h>
@@ -209,10 +206,13 @@ void launchVm(const Computer & c)
   string img_src = fmt::format("/space/images/std/{}.qcow2", c.os());
   string img = fmt::format("/space/images/run/{}-{}.qcow2", c.os(), qk_id);
 
-  string cmd = fmt::format("cp {} {}", img_src, img);
+  //string cmd = fmt::format("cp {} {}", img_src, img);
+  string cmd = fmt::format("qemu-img create -f qcow2 -o backing_file={src} {tgt}",
+      fmt::arg("src", img_src),
+      fmt::arg("tgt", img)
+  );
   CmdResult cr = exec(cmd);
   if(cr.code != 0) execFail(cr, "failed to create disk image for vm");
-
 
   LOG(INFO) << fmt::format("{name}.qemu = /tmp/mrtb-qk{id}-pid",
       fmt::arg("name", c.name()),
