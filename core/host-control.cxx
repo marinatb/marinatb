@@ -3,6 +3,7 @@
  */
 
 #include <cstdlib>
+#include <fstream>
 #include <unordered_map>
 #include <fmt/format.h>
 #include <gflags/gflags.h>
@@ -16,6 +17,7 @@ using std::to_string;
 using std::unordered_map;
 using std::unique_ptr;
 using std::vector;
+using std::ofstream;
 using std::runtime_error;
 using std::out_of_range;
 using std::exception;
@@ -174,7 +176,12 @@ void makeDiskImage(string name, Memory size)
   system(cmd.c_str());
 }
 
-void launchVm(const Computer & c)
+inline string xpdir(const Blueprint & bp)
+{
+  return fmt::format("/space/xp/{}", bp.id());
+}
+
+void launchVm(const Computer & c, const Blueprint & bp)
 {
   size_t qk_id = qkId.create(c.interfaces().begin()->second.mac());
 
@@ -202,17 +209,16 @@ void launchVm(const Computer & c)
     ++k;
   }
 
-  //TODO come up with an actual image naming/storage mech
+  //create the disk image
   string img_src = fmt::format("/space/images/std/{}.qcow2", c.os());
-  string img = fmt::format("/space/images/run/{}-{}.qcow2", c.os(), qk_id);
-
-  //string cmd = fmt::format("cp {} {}", img_src, img);
+  string img = fmt::format("/{}/{}.qcow2", xpdir(bp), c.name());
   string cmd = fmt::format("qemu-img create -f qcow2 -o backing_file={src} {tgt}",
       fmt::arg("src", img_src),
       fmt::arg("tgt", img)
   );
   CmdResult cr = exec(cmd);
   if(cr.code != 0) execFail(cr, "failed to create disk image for vm");
+
 
   LOG(INFO) << fmt::format("{name}.qemu = /tmp/mrtb-qk{id}-pid",
       fmt::arg("name", c.name()),
@@ -230,14 +236,16 @@ void launchVm(const Computer & c)
       "-hda {img} "
       "{netblk} "
       "-vnc 0.0.0.0:{qkid} "
-      "-D /tmp/mrtb-qlog-{qkid} "
+      "-D /{xpdir}/{name}-qlog "
       "-daemonize "
-      "-pidfile /tmp/mrtb-qk{qkid}-pid",
+      "-pidfile /{xpdir}/{name}-qpid",
       fmt::arg("cores", c.cores()),
       fmt::arg("mem", c.memory().megabytes()),
       fmt::arg("img", img),
       fmt::arg("qkid", qk_id),
-      fmt::arg("netblk", netblk)
+      fmt::arg("netblk", netblk),
+      fmt::arg("xpdir", xpdir(bp)),
+      fmt::arg("name", c.name())
   );
 
   cr = exec(cmd);
@@ -308,6 +316,55 @@ void createComputerPort(const Network & n, string id)
   if(cr.code != 0) execFail(cr, "failed to create computer port");
 }
 
+void initXpDir(const Blueprint & bp)
+{
+  exec(fmt::format("rm -rf {}", xpdir(bp)));
+  CmdResult cr = exec(fmt::format("mkdir -p {}", xpdir(bp)));
+  if(cr.code != 0) execFail(cr, "failed to create experiment directory");
+
+  {
+    ofstream ofs{fmt::format("{}/blueprint", xpdir(bp))};
+    ofs << bp.json().dump(2);
+    ofs.close();
+  }
+}
+
+void launchNetworks(const Blueprint & bp)
+{
+  for(const Network & n : bp.networks()) 
+  {
+    createNetworkBridge(n);
+    for(const Neighbor & nbr : n.connections())
+    {
+      if(nbr.kind == Neighbor::Kind::Computer)
+      {
+        try
+        { 
+          bp.getComputerByMac(nbr.id);
+          createComputerPort(n, nbr.id);
+        }
+        catch(out_of_range &) 
+        { 
+          // expected that some comps not local
+          LOG(INFO) << fmt::format(
+            "skipping interface generation for remote network connection "
+            "{} -- {}",
+            n.name(), nbr.id
+          );
+        }
+      }
+    }
+  }
+}
+
+void launchComputers(const Blueprint & bp)
+{
+  for(const Computer & c : bp.computers())
+  {
+    launchVm(c, bp);
+  }
+}
+
 http::Response construct(Json j)
 {
   LOG(INFO) << "construct request";
@@ -323,36 +380,9 @@ http::Response construct(Json j)
       << " across "
       << bp.networks().size() << " networks";
 
-    google::FlushLogFiles(0);
-
-    for(const Network & n : bp.networks()) 
-    {
-      createNetworkBridge(n);
-      for(const Neighbor & nbr : n.connections())
-      {
-        if(nbr.kind == Neighbor::Kind::Computer)
-        {
-          try
-          { 
-            bp.getComputerByMac(nbr.id);
-            createComputerPort(n, nbr.id);
-          }
-          catch(out_of_range &) 
-          { 
-            // expected that some comps not local
-            LOG(INFO) << fmt::format(
-              "skipping interface generation for remote network connection "
-              "{} -- {}",
-              n.name(), nbr.id
-            );
-          }
-        }
-      }
-    }
-    for(const Computer & c : bp.computers())
-    {
-      launchVm(c);
-    }
+    initXpDir(bp);
+    launchNetworks(bp);
+    launchComputers(bp);
 
     Json r;
     r["status"] = "ok";
@@ -363,12 +393,12 @@ http::Response construct(Json j)
 
 }
 
-http::Response info(Json)
+http::Response destruct(Json)
 {
   throw runtime_error{"not implemented"};
 }
 
-http::Response destruct(Json)
+http::Response info(Json)
 {
   throw runtime_error{"not implemented"};
 }

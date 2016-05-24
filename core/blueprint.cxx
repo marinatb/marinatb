@@ -5,10 +5,10 @@
 #include <vector>
 #include <algorithm>
 #include <fmt/format.h>
-#include "blueprint.hxx"
-#include "util.hxx"
 #include "3p/pipes/pipes.hxx"
-#include "topo.hxx"
+#include "core/blueprint.hxx"
+#include "core/util.hxx"
+#include "core/topo.hxx"
 
 using std::runtime_error;
 using std::out_of_range;
@@ -33,9 +33,12 @@ namespace marina
 
   struct Blueprint_
   {
-    Blueprint_(string name) : name{name} {}
+    Blueprint_(string name) 
+      : name{name},
+        id{generate_guid()}
+    {}
 
-    string name;
+    string name, id;
     unordered_map<string, Network> networks;
     unordered_map<string, Computer> computers;
     vector<Link> links;
@@ -93,6 +96,8 @@ Blueprint & Blueprint::name(string name)
   _->name = name;
   return *this;
 }
+
+string Blueprint::id() const { return _->id; }
 
 Network Blueprint::network(string name) 
 { 
@@ -225,6 +230,7 @@ Json Blueprint::json() const
   j["networks"] = jtransform(_->networks);
   j["computers"] = jtransform(_->computers);
   j["links"] = jtransform(_->links);
+  j["id"] = _->id;
   return j;
 }
 
@@ -332,6 +338,7 @@ Blueprint Blueprint::fromJson(Json j)
 {
   string name = extract(j, "name", "blueprint");
   Blueprint bp{name};
+  bp._->id = extract(j, "id", "blueprint");
 
   Json computers = extract(j, "computers", "blueprint");
   for(Json & cj : computers)

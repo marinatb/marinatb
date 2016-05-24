@@ -39,6 +39,10 @@ namespace marina
       std::string name() const;
       Blueprint & name(std::string);
 
+      //id a UUID that uniquely identifies this blueprint in the universe of
+      //all possible blueprints
+      std::string id() const;
+
       //component constructors
       Network network(std::string name);
       Computer computer(std::string name);
