@@ -154,7 +154,8 @@ namespace marina
   bool operator != (const Latency &, const Latency &);
 
 
-  // Address formats ------------------------------------------------------------
+  // IpV4Address ----------------------------------------------------------------
+
   class IpV4Address
   {
     public:
@@ -162,6 +163,9 @@ namespace marina
       IpV4Address(const std::string & addr, uint32_t mask);
       IpV4Address(const IpV4Address &) = default;
       IpV4Address(IpV4Address &&) = default;
+
+      static IpV4Address fromJson(Json);
+      Json json() const;
 
       IpV4Address & operator=(const IpV4Address &) = default;
       IpV4Address & operator=(IpV4Address &&) = default;
@@ -210,8 +214,8 @@ namespace marina
       const Bandwidth capacity() const;
       Network & capacity(Bandwidth);
 
-      const IpV4Address & ipv4Space() const;
-      Network & ipv4Space(const IpV4Address &);
+      const IpV4Address & ipv4() const;
+      Network & ipv4(std::string addr, uint32_t mask);
 
       //latency
       const Latency latency() const;
@@ -267,6 +271,12 @@ namespace marina
   class Interface
   {
     public:
+      struct EmbeddingInfo
+      {
+        //populated by the materializer if static networking is enabled
+        IpV4Address ipaddr_v4;
+      };
+
       Interface(std::string name);
       static Interface fromJson(Json);
 
@@ -283,6 +293,8 @@ namespace marina
       Interface & capacity(Bandwidth);
 
       std::string mac() const;
+
+      EmbeddingInfo & einfo() const;
 
       Json json() const;
 
@@ -344,6 +356,7 @@ namespace marina
       Computer & add_ifx(std::string, Bandwidth, Latency = 0_ms);
       Computer & remove_ifx(std::string);
       std::unordered_map<std::string, Interface> & interfaces() const;
+      Interface getInterfaceByMac(std::string) const;
 
       //embedding info
       Embedding embedding() const;

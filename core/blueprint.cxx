@@ -83,6 +83,7 @@ namespace marina
 
     string name, mac;
     Latency latency{0_ms};
+    Interface::EmbeddingInfo einfo;
     Bandwidth capacity{1_gbps};
   };
 
@@ -572,7 +573,7 @@ bool marina::operator != (const Latency &a, const Latency &b)
   return !(a == b);
 }
 
-// Address formats -------------------------------------------------------------
+// IpV4Address -----------------------------------------------------------------
 
 IpV4Address::IpV4Address(const string & addr, uint32_t mask)
   : mask_{mask}
@@ -633,6 +634,28 @@ IpV4Address marina::operator-(IpV4Address a, uint32_t x)
   return b;
 }
 
+IpV4Address IpV4Address::fromJson(Json j)
+{
+  uint64_t addr = extract(j, "addr", "ipv4address"),
+           mask = extract(j, "mask", "ipv4address");
+
+  IpV4Address a;
+  a.addr_ = addr;
+  a.mask_ = mask;
+
+  return a;
+}
+
+Json IpV4Address::json() const
+{
+  Json j;
+
+  j["addr"] = addr_;
+  j["mask"] = mask_;
+
+  return j;
+}
+
 // Network ---------------------------------------------------------------------
 Network::Network(string name)
   : _{new Network_{name}}
@@ -652,16 +675,10 @@ Network Network::fromJson(Json j)
     n._->connections.push_back(nbr);
   }
 
-  
-  /*
-  Json ifxs = extract(j, "interfaces", "network");
-  for(const Json & ij : ifxs)
-  {
-    Interface ifx = Interface::fromJson(ij);
-    n._->interfaces.insert_or_assign(ifx.name(), ifx);
-  }
-  */
   n._->guid = extract(j, "guid", "network");
+
+  Json ipv4_ = extract(j, "ipv4", "network");
+  n._->ipv4space = IpV4Address::fromJson(ipv4_);
 
   Json einfo = extract(j, "einfo", "network");
   n._->einfo.vni = extract(einfo, "vni", "einfo");
@@ -684,14 +701,14 @@ Network & Network::capacity(Bandwidth x)
 }
 
 
-const IpV4Address & Network::ipv4Space() const
+const IpV4Address & Network::ipv4() const
 {
   return _->ipv4space;
 }
 
-Network & Network::ipv4Space(const IpV4Address & x)
+Network & Network::ipv4(string addr, uint32_t mask)
 {
-  _->ipv4space = x;
+  _->ipv4space = IpV4Address{addr, mask};
   return *this;
 }
 
@@ -724,6 +741,7 @@ Json Network::json() const
   j["latency"] = latency().json();
   j["capacity"] = capacity().json();
   j["connections"] = jtransform(_->connections);
+  j["ipv4"] = ipv4().json();
   j["guid"] = _->guid;
   j["einfo"]["vni"] = _->einfo.vni;
   return j;
@@ -873,6 +891,10 @@ Interface Interface::fromJson(Json j)
      .capacity(Bandwidth::fromJson(extract(j, "capacity", "interface")));
 
   ifx._->mac = extract(j, "mac", "interface");
+  
+  Json einfo = extract(j, "einfo", "interface");
+  Json ipaddr_v4 = extract(einfo, "ipv4", "interface:einfo");
+  ifx.einfo().ipaddr_v4 = IpV4Address::fromJson(ipaddr_v4);
 
   return ifx;
 }
@@ -903,6 +925,11 @@ string Interface::mac() const
   return _->mac;
 }
 
+Interface::EmbeddingInfo & Interface::einfo() const
+{
+  return _->einfo;
+}
+
 Json Interface::json() const
 {
   Json j;
@@ -910,6 +937,7 @@ Json Interface::json() const
   j["latency"] = latency().json();
   j["capacity"] = capacity().json();
   j["mac"] = mac();
+  j["einfo"]["ipv4"] = einfo().ipaddr_v4.json();
   return j;
 }
 
@@ -1115,6 +1143,23 @@ unordered_map<string, Interface> & Computer::interfaces() const
 { 
   return _->interfaces; 
 }
+
+Interface Computer::getInterfaceByMac(string m) const
+{
+  auto i = 
+    find_if(_->interfaces.begin(), _->interfaces.end(),
+      [m](const auto p){ return p.second.mac() == m; }
+    );
+
+  if(i == _->interfaces.end()) 
+    throw runtime_error{
+      fmt::format("computer {} does not contain interface {}",
+          name(), m)
+    };
+
+  return i->second;
+}
+  
 
 bool marina::operator== (const Computer & a, const Computer & b)
 {

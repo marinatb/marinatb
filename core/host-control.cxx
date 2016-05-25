@@ -18,6 +18,7 @@ using std::unordered_map;
 using std::unique_ptr;
 using std::vector;
 using std::ofstream;
+using std::endl;
 using std::runtime_error;
 using std::out_of_range;
 using std::exception;
@@ -40,6 +41,18 @@ void initQemuKvm();
 
 /*    bridge info   */
 LinearIdCacheMap<string, size_t> bridgeId, vhostId, qkId;
+
+/*
+using AddressTable = unordered_map<string, IpV4Address>;
+
+struct BpInfo
+{
+  Blueprint bp;
+  AddressTable address_table;
+};
+
+unordered_map<string, BpInfo> live_bps;
+*/
 
 /*
  *    command line flags
@@ -155,24 +168,7 @@ void initQemuKvm()
   LOG(INFO) << "clobbering any existing qemu-system instances";
 
   CmdResult cr = exec("pkill qemu-system");
-  //if(cr.code != 0) execFail(cr, "failed to kill existing qemu instances");
-
   LOG(INFO) << "qemu-kvm ready";
-}
-
-void makeDiskImage(string name, Memory size)
-{
-  string sz;
-  if(size.unit == Memory::Unit::B) sz = "";
-  else if(size.unit == Memory::Unit::KB) sz = "k";
-  else if(size.unit == Memory::Unit::MB) sz = "M";
-  else if(size.unit == Memory::Unit::GB) sz = "G";
-  else if(size.unit == Memory::Unit::TB) sz = "T";
-
-  string cmd = 
-    "qemu-img create -f qcow2 " + name + ".qcow2 " + to_string(size.size) + sz;
-
-  system(cmd.c_str());
 }
 
 inline string xpdir(const Blueprint & bp)
@@ -207,6 +203,31 @@ void launchVm(const Computer & c, const Blueprint & bp)
 
     ++k;
   }
+
+
+  //create network init script for linux
+
+  //AddressTable & addrs = live_bps.at(bp.id()).address_table;
+  ofstream ofs{fmt::format("{}/{}-netup", xpdir(bp), c.name())};
+
+  ofs << "#!/bin/bash"
+      << endl
+      << endl;
+
+  size_t dev_id{0};
+  for(const auto & i : c.interfaces())
+  {
+    Interface ifx = i.second;
+  
+    string dev_name = fmt::format("ens{}", dev_id++);
+    string addr = ifx.einfo().ipaddr_v4.cidr();
+
+    ofs << fmt::format("# {}", dev_name) << endl;
+    ofs << fmt::format("ip addr add {} dev {}", addr, dev_name) << endl;
+    ofs << fmt::format("ip link set up dev {}", dev_name) << endl;
+    ofs << endl;
+  }
+  ofs.close();
 
   //create the disk image
   string img_src = fmt::format("/space/images/std/{}.qcow2", c.os());
@@ -330,11 +351,12 @@ void initXpDir(const Blueprint & bp)
 
 void launchNetworks(const Blueprint & bp)
 {
-  unordered_map<string, IpV4Address> ipv4_address_table;
+  //unordered_map<string, IpV4Address> ipv4_address_table;
+  //AddressTable & ipv4_address_table = live_bps.at(bp.id()).address_table;
 
   for(const Network & n : bp.networks()) 
   {
-    IpV4Address a = n.ipv4Space();
+    //IpV4Address a = n.ipv4Space();
 
     createNetworkBridge(n);
 
@@ -347,9 +369,9 @@ void launchNetworks(const Blueprint & bp)
           bp.getComputerByMac(nbr.id);
           createComputerPort(n, nbr.id);
 
-          if(a.netZero()) a++;
-          ipv4_address_table[nbr.id] = a;
-          a++;
+          //if(a.netZero()) a++;
+          //ipv4_address_table[nbr.id] = a;
+          //a++;
         }
         catch(out_of_range &) 
         { 
@@ -381,6 +403,8 @@ http::Response construct(Json j)
   try
   {
     auto bp = Blueprint::fromJson(j); 
+
+    //live_bps.insert_or_assign(bp.id(), BpInfo{bp,{}});
 
     LOG(INFO) 
       << "materializaing " 

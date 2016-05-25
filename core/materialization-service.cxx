@@ -79,7 +79,7 @@ http::Response construct(Json j)
     // of topo that bas bp emedded inside
     auto embedding = embed(bp, topo);
 
-    //TODO this is a centralized database attribute for now
+    //TODO vxlan.vni: this is a centralized database attribute for now
     //however in the future this should be a distributed agreement variable
     //among the host-controllers because at this level we really shouldn't
     //care about such a materialization implementation detail. Maybehapps
@@ -87,7 +87,23 @@ http::Response construct(Json j)
     //level
     for(Network & n : bp.networks())
     {
+      //setup vxlan virtual network identifier
       n.einfo().vni = db->newVxlanVni(n.guid());
+
+      //set interface ip addresses
+      IpV4Address a = n.ipv4();
+      for(const Neighbor & nbr : n.connections())
+      {
+        if(nbr.kind != Neighbor::Kind::Computer) continue;
+        if(a.netZero()) a++;
+
+        bp.getComputerByMac(nbr.id)
+          .getInterfaceByMac(nbr.id)
+          .einfo()
+          .ipaddr_v4 = a;
+
+        a++;
+      }
     }
 
     //call out to all of the selected materialization hosts asking them to 
