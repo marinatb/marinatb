@@ -43,18 +43,6 @@ void initQemuKvm();
 LinearIdCacheMap<string, size_t> bridgeId, vhostId, qkId;
 
 /*
-using AddressTable = unordered_map<string, IpV4Address>;
-
-struct BpInfo
-{
-  Blueprint bp;
-  AddressTable address_table;
-};
-
-unordered_map<string, BpInfo> live_bps;
-*/
-
-/*
  *    command line flags
  */
 DEFINE_string(
@@ -206,8 +194,6 @@ void launchVm(const Computer & c, const Blueprint & bp)
 
 
   //create network init script for linux
-
-  //AddressTable & addrs = live_bps.at(bp.id()).address_table;
   ofstream ofs{fmt::format("{}/{}-netup", xpdir(bp), c.name())};
 
   ofs << "#!/bin/bash"
@@ -351,15 +337,9 @@ void initXpDir(const Blueprint & bp)
 
 void launchNetworks(const Blueprint & bp)
 {
-  //unordered_map<string, IpV4Address> ipv4_address_table;
-  //AddressTable & ipv4_address_table = live_bps.at(bp.id()).address_table;
-
   for(const Network & n : bp.networks()) 
   {
-    //IpV4Address a = n.ipv4Space();
-
     createNetworkBridge(n);
-
     for(const Neighbor & nbr : n.connections())
     {
       if(nbr.kind == Neighbor::Kind::Computer)
@@ -368,10 +348,6 @@ void launchNetworks(const Blueprint & bp)
         { 
           bp.getComputerByMac(nbr.id);
           createComputerPort(n, nbr.id);
-
-          //if(a.netZero()) a++;
-          //ipv4_address_table[nbr.id] = a;
-          //a++;
         }
         catch(out_of_range &) 
         { 
@@ -403,8 +379,6 @@ http::Response construct(Json j)
   try
   {
     auto bp = Blueprint::fromJson(j); 
-
-    //live_bps.insert_or_assign(bp.id(), BpInfo{bp,{}});
 
     LOG(INFO) 
       << "materializaing " 
