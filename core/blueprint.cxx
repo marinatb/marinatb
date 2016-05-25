@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <fmt/format.h>
+#include <arpa/inet.h>
 #include "3p/pipes/pipes.hxx"
 #include "core/blueprint.hxx"
 #include "core/util.hxx"
@@ -21,6 +22,7 @@ using std::to_string;
 using std::pair;
 using std::sort;
 using std::find_if;
+using std::ostream;
 
 using namespace marina;
 using namespace pipes;
@@ -51,6 +53,7 @@ namespace marina
     string name;
     Bandwidth bandwidth{100_mbps};
     Latency latency{0_ms};
+    IpV4Address ipv4space{"10.10.0.0", 16};
     //unordered_map<string, Interface> interfaces;
     string guid =  generate_mac();
     vector<Neighbor> connections;
@@ -569,6 +572,66 @@ bool marina::operator != (const Latency &a, const Latency &b)
   return !(a == b);
 }
 
+// Address formats -------------------------------------------------------------
+
+IpV4Address::IpV4Address(const string & addr, uint32_t mask)
+  : mask_{mask}
+{
+  int err = inet_pton(AF_INET, addr.c_str(), &addr_);
+  if(err != 1) throw runtime_error{"bad ipv4 address"};
+}
+
+string IpV4Address::addrStr() const
+{
+  char buf[INET_ADDRSTRLEN];
+  inet_ntop(AF_INET, &addr_, buf, INET_ADDRSTRLEN);
+  return string{buf};
+}
+
+string IpV4Address::cidr() const
+{
+  return fmt::format("{}/{}", addrStr(), mask_);
+}
+
+uint32_t IpV4Address::addr() const { return addr_; }
+uint32_t IpV4Address::mask() const { return mask_; }
+
+IpV4Address & IpV4Address::operator++(int)
+{
+  addr_ = htonl(ntohl(addr_) + 1);
+  return *this;
+}
+
+IpV4Address & IpV4Address::operator--(int)
+{
+  addr_ = htonl(ntohl(addr_) - 1);
+  return *this;
+}
+
+bool IpV4Address::netZero() const
+{
+  return ntohl(addr_) % 256 == 0;
+}
+  
+ostream & marina::operator<<(ostream & o, const IpV4Address & a)
+{
+  o << a.cidr(); 
+  return o;
+}
+
+IpV4Address marina::operator+(IpV4Address a, uint32_t x)
+{
+  IpV4Address b = a;
+  b.addr_ = htonl(ntohl(a.addr_) + x);
+  return b;
+}
+
+IpV4Address marina::operator-(IpV4Address a, uint32_t x)
+{
+  IpV4Address b = a;
+  b.addr_ = htonl(ntohl(a.addr_) - x);
+  return b;
+}
 
 // Network ---------------------------------------------------------------------
 Network::Network(string name)
@@ -617,6 +680,18 @@ const Bandwidth Network::capacity() const { return _->bandwidth; }
 Network & Network::capacity(Bandwidth x)
 {
   _->bandwidth = x;
+  return *this;
+}
+
+
+const IpV4Address & Network::ipv4Space() const
+{
+  return _->ipv4space;
+}
+
+Network & Network::ipv4Space(const IpV4Address & x)
+{
+  _->ipv4space = x;
   return *this;
 }
 

@@ -154,6 +154,40 @@ namespace marina
   bool operator != (const Latency &, const Latency &);
 
 
+  // Address formats ------------------------------------------------------------
+  class IpV4Address
+  {
+    public:
+      IpV4Address() = default;
+      IpV4Address(const std::string & addr, uint32_t mask);
+      IpV4Address(const IpV4Address &) = default;
+      IpV4Address(IpV4Address &&) = default;
+
+      IpV4Address & operator=(const IpV4Address &) = default;
+      IpV4Address & operator=(IpV4Address &&) = default;
+
+      std::string cidr() const,
+                  addrStr() const;
+
+      uint32_t addr() const;
+      uint32_t mask() const;
+
+      IpV4Address & operator++(int);
+      IpV4Address & operator--(int);
+
+      bool netZero() const;
+
+
+    private:
+      uint32_t addr_{0}, mask_{0};
+      friend IpV4Address operator +(IpV4Address, uint32_t);
+      friend IpV4Address operator -(IpV4Address, uint32_t);
+  };
+      
+  IpV4Address operator +(IpV4Address, uint32_t);
+  IpV4Address operator -(IpV4Address, uint32_t);
+
+  std::ostream & operator<<(std::ostream &o, const IpV4Address &);
 
   // Network --------------------------------------------------------------------
   class Network
@@ -175,6 +209,9 @@ namespace marina
       //bandwidth
       const Bandwidth capacity() const;
       Network & capacity(Bandwidth);
+
+      const IpV4Address & ipv4Space() const;
+      Network & ipv4Space(const IpV4Address &);
 
       //latency
       const Latency latency() const;

@@ -110,7 +110,7 @@ void initOvs()
   CmdResult cr = exec("service openvswitch-switch start");
   if(cr.code != 0) execFail(cr, "failed to clean start openvswitch");
 
-  // create the physical bridge
+  // create the physical experiment bridge
   LOG(INFO) << "setting up physical bridge";
   cr = exec(
     fmt::format(
@@ -148,7 +148,6 @@ void initOvs()
   if(cr.code != 0) execFail(cr, "failed to flush iptables");
 
   LOG(INFO) << "ovs ready";
-
 }
 
 void initQemuKvm()
@@ -277,7 +276,7 @@ void createNetworkBridge(const Network & n)
 
   string vx_id = fmt::format("vxlan{}", net_id);
 
-  //hook vxlan up to the bridge
+  //hook experiment-vxlan up to the network-bridge
   cmd = fmt::format(
     "ovs-vsctl add-port {id} {vxid} "
     "-- set Interface {vxid} type=vxlan "
@@ -331,9 +330,14 @@ void initXpDir(const Blueprint & bp)
 
 void launchNetworks(const Blueprint & bp)
 {
+  unordered_map<string, IpV4Address> ipv4_address_table;
+
   for(const Network & n : bp.networks()) 
   {
+    IpV4Address a = n.ipv4Space();
+
     createNetworkBridge(n);
+
     for(const Neighbor & nbr : n.connections())
     {
       if(nbr.kind == Neighbor::Kind::Computer)
@@ -342,6 +346,10 @@ void launchNetworks(const Blueprint & bp)
         { 
           bp.getComputerByMac(nbr.id);
           createComputerPort(n, nbr.id);
+
+          if(a.netZero()) a++;
+          ipv4_address_table[nbr.id] = a;
+          a++;
         }
         catch(out_of_range &) 
         { 
