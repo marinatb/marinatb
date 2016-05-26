@@ -5,16 +5,11 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
 #include "3p/json/src/json.hpp"
 #include "common/net/proto.hxx"
 #include "common/net/http_server.hxx"
-
-/*
-#include <bsoncxx/builder/basic/document.hpp>
-#include <bsoncxx/builder/basic/array.hpp>
-#include <bsoncxx/builder/basic/kvp.hpp>
-#include <bsoncxx/json.hpp>
-*/
 
 namespace marina {
 
@@ -82,6 +77,14 @@ class LinearIdCacheMap
     Value v_{};
     std::unordered_map<Key, Value> m_;
 };
+
+struct RtReq
+{
+  nlmsghdr header;
+  ifinfomsg msg;
+};
+
+std::string mac_2_ifname(std::string mac);
 
 }
 

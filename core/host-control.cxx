@@ -204,20 +204,30 @@ void launchVm(const Computer & c, const Blueprint & bp)
   for(const auto & i : c.interfaces())
   {
     Interface ifx = i.second;
-  
     string dev_name = fmt::format("ens{}", dev_id++);
-    string addr = ifx.einfo().ipaddr_v4.cidr();
 
-    ofs << fmt::format("# {}", dev_name) << endl;
-    ofs << fmt::format("ip addr add {} dev {}", addr, dev_name) << endl;
-    ofs << fmt::format("ip link set up dev {}", dev_name) << endl;
-    ofs << endl;
+    if(ifx.name() == "cifx")
+    {
+      ofs << fmt::format("# {}", dev_name) << endl;
+      ofs << fmt::format("ip link set up dev {}", dev_name) << endl;
+      ofs << fmt::format("dhclient {}", dev_name) << endl;
+      ofs << endl;
+    }
+    else
+    {
+      string addr = ifx.einfo().ipaddr_v4.cidr();
+
+      ofs << fmt::format("# {}", dev_name) << endl;
+      ofs << fmt::format("ip addr add {} dev {}", addr, dev_name) << endl;
+      ofs << fmt::format("ip link set up dev {}", dev_name) << endl;
+      ofs << endl;
+    }
   }
   ofs.close();
 
   //create the disk image
   string img_src = fmt::format("/space/images/std/{}.qcow2", c.os());
-  string img = fmt::format("/{}/{}.qcow2", xpdir(bp), c.name());
+  string img = fmt::format("{}/{}.qcow2", xpdir(bp), c.name());
   string cmd = fmt::format("qemu-img create -f qcow2 -o backing_file={src} {tgt}",
       fmt::arg("src", img_src),
       fmt::arg("tgt", img)
@@ -243,6 +253,7 @@ void launchVm(const Computer & c, const Blueprint & bp)
       "{netblk} "
       "-vnc 0.0.0.0:{qkid} "
       "-D /{xpdir}/{name}-qlog "
+      "-net nic,vlan={qkid} -net user,vlan={qkid},hostfwd=tcp::220{qkid}-:22 "
       "-daemonize "
       "-pidfile /{xpdir}/{name}-qpid",
       fmt::arg("cores", c.cores()),

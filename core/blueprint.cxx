@@ -1008,7 +1008,9 @@ HwSpec marina::operator- (HwSpec a, HwSpec b)
 // Computer --------------------------------------------------------------------
 Computer::Computer(string name)
   : _{new Computer_{name}}
-{}
+{
+  add_ifx("cifx", 1_gbps);
+}
 
 Computer Computer::fromJson(Json j)
 {

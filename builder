@@ -171,6 +171,7 @@ case $1 in
     xargs cp -t host-pkg/libs/
 
     cp build/core/host-control host-pkg/bin/
+    cp build/core/mac2ifname host-pkg/bin/
 
     tar czf host-pkg.tgz host-pkg
     rm -rf host-pkg
