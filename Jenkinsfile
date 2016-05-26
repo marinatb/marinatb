@@ -8,11 +8,6 @@ node {
         sh 'git submodule update'
 
 
-    stage 'Environment Setup'
-
-        echo 'Do something'
-
-
     stage 'Build'
 
         sh 'mkdir build'
@@ -46,7 +41,6 @@ node {
     stage 'Integration Tests'
 
         sh 'docker run --privileged --hostname=builder --net=tnet -v `pwd`:/code --rm test [api-blueprint]'
-        sh 'docker run --privileged --hostname=builder --net=tnet -v `pwd`:/code --rm test [api-mzn]'
 
 
     stage 'Cleanup'
