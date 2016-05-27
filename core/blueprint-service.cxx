@@ -62,7 +62,7 @@ http::Response save(Json j)
     source = j.at("source");
     bpid = source.at("name");
   }
-  catch(out_of_range &) { return badRequest("save", j); }
+  catch(out_of_range &e) { return badRequest("save", j, e); }
 
   //try to save the blueprint
   try 
@@ -91,7 +91,7 @@ http::Response get(Json j)
     project = j.at("project").get<string>();
     bpid = j.at("bpid").get<string>();
   }
-  catch(out_of_range &) { return badRequest("get", j); }
+  catch(out_of_range &e) { return badRequest("get", j, e); }
 
   //try to fetch the blueprint
   try
@@ -125,7 +125,7 @@ http::Response check(Json j)
     project = j.at("project").get<string>();
     bpid = j.at("bpid").get<string>();
   }
-  catch(out_of_range &) { return badRequest("check", j); }
+  catch(out_of_range &e) { return badRequest("check", j, e); }
 
   try
   {
@@ -166,7 +166,7 @@ http::Response del(Json j)
     project = j.at("project").get<string>();
     bpid = j.at("bpid").get<string>();
   }
-  catch(out_of_range &) { return badRequest("del", j); }
+  catch(out_of_range &e) { return badRequest("del", j, e); }
 
   //do the delete
   try

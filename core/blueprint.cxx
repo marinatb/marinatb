@@ -1186,6 +1186,11 @@ bool marina::operator!= (const Computer & a, const Computer & b)
   return !(a == b);
 }
 
+bool marina::isLinux(const Computer &)
+{
+  return true;
+}
+
 // Link ------------------------------------------------------------------------
 Link::Link(Interface a, Interface b)
   : endpoints{{a.mac(), b.mac()}}

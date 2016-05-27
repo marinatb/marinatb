@@ -16,6 +16,7 @@ using std::random_device;
 using std::exception;
 using std::invalid_argument;
 using std::runtime_error;
+using std::out_of_range;
 using std::function;
 
 using namespace marina;
@@ -68,10 +69,11 @@ marina::jsonIn(function<http::Response(Json)> f)
   };
 }
 
-http::Response marina::badRequest(string path, Json & j)
+http::Response marina::badRequest(string path, Json & j, out_of_range &e)
 {
   LOG(ERROR) << "[" << path << "] bad request";
   LOG(ERROR) << j.dump(2);
+  LOG(ERROR) << e.what();
   return http::Response{ http::Status::BadRequest(), "" };
 }
 
@@ -104,3 +106,4 @@ CmdResult marina::exec(string cmd)
   result.code = WEXITSTATUS(pexit);
   return result;
 }
+

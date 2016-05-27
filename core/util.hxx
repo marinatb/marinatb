@@ -49,7 +49,7 @@ std::string generate_guid();
 std::function<http::Response(http::Message)> 
 jsonIn(std::function<http::Response(Json)>);
 
-http::Response badRequest(std::string path, Json & j);
+http::Response badRequest(std::string path, Json & j, std::out_of_range &e);
 http::Response unexpectedFailure(std::string path, Json & j, std::exception &e);
 
 struct CmdResult
@@ -85,6 +85,7 @@ struct RtReq
 };
 
 std::string mac_2_ifname(std::string mac);
+
 
 }
 

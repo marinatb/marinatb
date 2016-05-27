@@ -164,16 +164,100 @@ inline string xpdir(const Blueprint & bp)
   return fmt::format("/space/xp/{}", bp.id());
 }
 
+void plopLinuxConfig(const Computer & c, string dst, string img)
+{
+  //create network init script for linux
+  string initscript = fmt::format("{}/{}-netup", dst, c.name());
+  ofstream ofs{ initscript };
+
+  ofs << "#!/bin/bash"
+      << endl
+      << endl;
+
+  ofs << "m2i=/home/murphy/host-pkg/bin/mac2interface"
+      << endl
+      << endl;
+
+  for(const auto & i : c.interfaces())
+  {
+    Interface ifx = i.second;
+    string dev_name = fmt::format("`$m2i {}`", ifx.mac());
+
+    if(ifx.name() == "cifx")
+    {
+      ofs << fmt::format("# control interface", dev_name) << endl;
+      ofs << fmt::format("ip link set up dev {}", dev_name) << endl;
+      ofs << fmt::format("dhclient {}", dev_name) << endl;
+      ofs << endl;
+    }
+    else
+    {
+      string addr = ifx.einfo().ipaddr_v4.cidr();
+
+      ofs << fmt::format("# {}", ifx.name()) << endl;
+      ofs << fmt::format("ip addr add {} dev {}", addr, dev_name) << endl;
+      ofs << fmt::format("ip link set up dev {}", dev_name) << endl;
+      ofs << endl;
+    }
+  }
+  ofs.close();
+  exec(fmt::format("chmod +x {}", initscript));
+
+  exec("modprobe nbd max_part=8");
+
+  //copy the network init script to the guest drive image
+  CmdResult cr = exec(fmt::format("qemu-nbd --connect=/dev/nbd0 {}", img));
+  if(cr.code != 0) 
+    execFail(cr, "failed to create network boodtdisk for qeumu image " + img);
+
+
+  cr = exec("mount /dev/nbd0p1 /space/tmount");
+  if(cr.code != 0)
+  {
+    exec("qemu-nbd --disconnect /dev/nbd0");
+    execFail(cr, "failed to mount qemu network boot disk partition 1");
+  }
+
+  cr = exec("mkdir -p /space/tmount/marina");
+  if(cr.code != 0)
+  {
+    exec("qemu-nbd --disconnect /dev/nbd0");
+    exec("umount /space/tmount");
+    execFail(cr, "failed to create marina root dir on node {}" + c.name());
+  }
+
+  cr = exec(fmt::format("cp {} {}", initscript, "/space/tmount/marina/init"));  
+  if(cr.code != 0)
+  {
+    exec("qemu-nbd --disconnect /dev/nbd0");
+    exec("umount /space/tmount");
+    execFail(cr, "failed to plop initscript into node {}" + c.name());
+  }
+    
+  exec("umount /space/tmount");
+  exec("qemu-nbd --disconnect /dev/nbd0");
+
+}
+
 void launchVm(const Computer & c, const Blueprint & bp)
 {
   size_t qk_id = qkId.create(c.interfaces().begin()->second.mac());
 
+  string arch{"IvyBridge"};
+
   //create qemu interfaces
   size_t k{0};
   string netblk;
+  string ctlmac;
   for(const auto & i : c.interfaces())
   {
     Interface ifx = i.second;
+
+    if(i.first == "cifx") 
+    {
+      ctlmac = ifx.mac();
+      continue;
+    }
     
     size_t vhid = vhostId.get(ifx.mac());
 
@@ -192,59 +276,35 @@ void launchVm(const Computer & c, const Blueprint & bp)
     ++k;
   }
 
-
-  //create network init script for linux
-  ofstream ofs{fmt::format("{}/{}-netup", xpdir(bp), c.name())};
-
-  ofs << "#!/bin/bash"
-      << endl
-      << endl;
-
-  size_t dev_id{0};
-  for(const auto & i : c.interfaces())
-  {
-    Interface ifx = i.second;
-    string dev_name = fmt::format("ens{}", dev_id++);
-
-    if(ifx.name() == "cifx")
-    {
-      ofs << fmt::format("# {}", dev_name) << endl;
-      ofs << fmt::format("ip link set up dev {}", dev_name) << endl;
-      ofs << fmt::format("dhclient {}", dev_name) << endl;
-      ofs << endl;
-    }
-    else
-    {
-      string addr = ifx.einfo().ipaddr_v4.cidr();
-
-      ofs << fmt::format("# {}", dev_name) << endl;
-      ofs << fmt::format("ip addr add {} dev {}", addr, dev_name) << endl;
-      ofs << fmt::format("ip link set up dev {}", dev_name) << endl;
-      ofs << endl;
-    }
-  }
-  ofs.close();
-
   //create the disk image
   string img_src = fmt::format("/space/images/std/{}.qcow2", c.os());
   string img = fmt::format("{}/{}.qcow2", xpdir(bp), c.name());
-  string cmd = fmt::format("qemu-img create -f qcow2 -o backing_file={src} {tgt}",
+  string cmd = fmt::format(
+      "qemu-img create -f qcow2 -o backing_file={src} {tgt}",
       fmt::arg("src", img_src),
       fmt::arg("tgt", img)
   );
   CmdResult cr = exec(cmd);
   if(cr.code != 0) execFail(cr, "failed to create disk image for vm");
 
-
   LOG(INFO) << fmt::format("{name}.qemu = /tmp/mrtb-qk{id}-pid",
       fmt::arg("name", c.name()),
       fmt::arg("id", qk_id) 
     );
+  
+  if(isLinux(c))
+  {
+    plopLinuxConfig(c, xpdir(bp), img);
+  }
+  else
+  {
+    throw "tomatoes";
+  }
 
   cmd = fmt::format(
     "qemu-system-x86_64 "
       "--enable-kvm "
-      "-cpu IvyBridge -smp {cores},sockets=1,cores={cores},threads=1 "
+      "-cpu {arch} -smp {cores},sockets=1,cores={cores},threads=1 "
       "-m {mem} -mem-path /dev/hugepages -mem-prealloc "
       "-object "
       " memory-backend-file,id=mem0,size={mem}M,mem-path=/dev/hugepages,share=on "
@@ -253,12 +313,15 @@ void launchVm(const Computer & c, const Blueprint & bp)
       "{netblk} "
       "-vnc 0.0.0.0:{qkid} "
       "-D /{xpdir}/{name}-qlog "
-      "-net nic,vlan={qkid} -net user,vlan={qkid},hostfwd=tcp::220{qkid}-:22 "
+      "-net nic,vlan={qkid},macaddr={ctlmac} "
+      "-net user,vlan={qkid},hostfwd=tcp::220{qkid}-:22 "
       "-daemonize "
       "-pidfile /{xpdir}/{name}-qpid",
+      fmt::arg("arch", arch),
       fmt::arg("cores", c.cores()),
       fmt::arg("mem", c.memory().megabytes()),
       fmt::arg("img", img),
+      fmt::arg("ctlmac", ctlmac),
       fmt::arg("qkid", qk_id),
       fmt::arg("netblk", netblk),
       fmt::arg("xpdir", xpdir(bp)),
@@ -405,7 +468,7 @@ http::Response construct(Json j)
     r["status"] = "ok";
     return http::Response{ http::Status::OK(), r.dump() };
   }
-  catch(out_of_range &) { return badRequest("construct", j); }
+  catch(out_of_range &e) { return badRequest("construct", j, e); }
   catch(exception &e) { return unexpectedFailure("construct", j, e); }
 
 }

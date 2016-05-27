@@ -373,6 +373,7 @@ namespace marina
 
   bool operator== (const Computer &, const Computer &);
   bool operator!= (const Computer &, const Computer &);
+  bool isLinux(const Computer &);
  
 }
 

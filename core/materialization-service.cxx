@@ -64,7 +64,7 @@ http::Response construct(Json j)
     project = j.at("project");
     bpid = j.at("bpid");
   }
-  catch(out_of_range &) { return badRequest("save", j); }
+  catch(out_of_range &e) { return badRequest("save", j, e); }
 
   //try to perform the materialization
   try
@@ -147,7 +147,7 @@ http::Response info(Json j)
     project = j.at("project");
     bpid = j.at("bpid");
   }
-  catch(out_of_range &) { return badRequest("save", j); }
+  catch(out_of_range &e) { return badRequest("save", j, e); }
 
   //get the materialization info
   try
@@ -171,7 +171,7 @@ http::Response destruct(Json j)
     project = j.at("project").get<string>();
     bpid = j.at("bpid").get<string>();
   }
-  catch(out_of_range &) { return badRequest("del", j); }
+  catch(out_of_range &e) { return badRequest("del", j, e); }
 
   try
   {
