@@ -173,6 +173,10 @@ void plopLinuxConfig(const Computer & c, string dst, string img)
   ofs << "#!/bin/bash"
       << endl
       << endl;
+  
+  ofs << "ldconfig" 
+      << endl
+      << endl;
 
   ofs << "m2i=mac2ifname"
       << endl
@@ -252,12 +256,29 @@ void plopLinuxConfig(const Computer & c, string dst, string img)
   ofs = ofstream{"/space/tmount/etc/ld.so.conf.d/local.conf"};
   ofs << "/usr/local/lib" << endl;
   ofs.close();
-  
-  ofs = ofstream{"/space/tmount/etc/init.d/marina"};
-  ofs << "ldconfig" << endl;
-  ofs << "/marina/init" << endl;
+
+  string svc{"/space/tmount/lib/systemd/system/marina.service"};
+  ofs = ofstream{svc};
+
+  ofs << "[Unit]" << endl
+      << "Description=Init this computer as a part of a marinatb experiment" << endl
+      << endl
+
+      << "[Service]" << endl
+      << "Type=oneshot" << endl
+      << "ExecStart=/marina/init" << endl
+      << endl
+
+      << "[Install]" << endl
+      << "WantedBy=multi-user.target" << endl
+      << endl;
+
   ofs.close();
-  exec("cd /space/tmount/etc/rc3.d && ln -s ../init.d/marina S99marina");
+  
+  string svclink{
+    "/space/tmount/etc/systemd/system/multi-user.target.wants/marina.service"};
+
+  exec(fmt::format("ln -s /lib/systemd/system/marina.service {}", svclink));
     
   exec("umount /space/tmount");
   exec("qemu-nbd --disconnect /dev/nbd0");
