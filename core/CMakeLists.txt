@@ -18,6 +18,9 @@ add_library( marina-core
   util.cxx
   embed.cxx
   compilation.cxx
+)
+
+add_library( marina-netlink
   netlink.cxx
 )
 
@@ -29,7 +32,7 @@ target_link_libraries( marina-core
 )
 
 add_executable( mac2ifname mac2ifname.cxx )
-target_link_libraries( mac2ifname marina-core )
+target_link_libraries( mac2ifname marina-netlink )
 
 add_executable( accounts accounts.cxx )
 target_link_libraries( accounts 

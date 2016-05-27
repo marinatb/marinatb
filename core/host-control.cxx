@@ -174,7 +174,7 @@ void plopLinuxConfig(const Computer & c, string dst, string img)
       << endl
       << endl;
 
-  ofs << "m2i=/home/murphy/host-pkg/bin/mac2interface"
+  ofs << "m2i=mac2ifname"
       << endl
       << endl;
 
@@ -210,7 +210,6 @@ void plopLinuxConfig(const Computer & c, string dst, string img)
   if(cr.code != 0) 
     execFail(cr, "failed to create network boodtdisk for qeumu image " + img);
 
-
   cr = exec("mount /dev/nbd0p1 /space/tmount");
   if(cr.code != 0)
   {
@@ -231,8 +230,34 @@ void plopLinuxConfig(const Computer & c, string dst, string img)
   {
     exec("qemu-nbd --disconnect /dev/nbd0");
     exec("umount /space/tmount");
-    execFail(cr, "failed to plop initscript into node {}" + c.name());
+    execFail(cr, "failed to plop initscript into " + c.name());
   }
+
+  cr = exec("cp /home/murphy/host-pkg/libs/* /space/tmount/usr/local/lib/");
+  if(cr.code != 0)
+  {
+    exec("qemu-nbd --disconnect /dev/nbd0");
+    exec("umount /space/tmount");
+    execFail(cr, "failed to plop libs into " + c.name());
+  }
+  
+  cr = exec("cp /home/murphy/host-pkg/bin/* /space/tmount/usr/local/bin/");
+  if(cr.code != 0)
+  {
+    exec("qemu-nbd --disconnect /dev/nbd0");
+    exec("umount /space/tmount");
+    execFail(cr, "failed to plop bins into " + c.name());
+  }
+  
+  ofs = ofstream{"/space/tmount/etc/ld.so.conf.d/local.conf"};
+  ofs << "/usr/local/lib" << endl;
+  ofs.close();
+  
+  ofs = ofstream{"/space/tmount/etc/init.d/marina"};
+  ofs << "ldconfig" << endl;
+  ofs << "/marina/init" << endl;
+  ofs.close();
+  exec("cd /space/tmount/etc/rc3.d && ln -s ../init.d/marina S99marina");
     
   exec("umount /space/tmount");
   exec("qemu-nbd --disconnect /dev/nbd0");
