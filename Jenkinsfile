@@ -16,7 +16,7 @@ node {
 
 
     stage 'Test Setup'
-        env.UUID = "mtb-${JOB_NAME}-${BUILD_NUMBER}"
+        env.UUID = "mtb-${env.JOB_NAME}-${env.BUILD_NUMBER}"
 
         sh './builder pkg'
 
