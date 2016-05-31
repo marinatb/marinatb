@@ -7,6 +7,10 @@ CMAKE_ARGS=".. -G Ninja -DCMAKE_BUILD_TYPE=Debug"
 CONTAINER="marinatb/builder"
 RUN="docker run"
 
+if [ -z "${UUID}" ]; then
+    UUID=`git show --quiet --pretty=%h`
+fi
+
 function do_cmake {
   mkdir -p build
   $RUN $ARGS --hostname=builder --name=builder \
@@ -23,17 +27,17 @@ function do_ninja {
 }
 
 function do_console {
-  docker exec -i -t $1 /bin/bash
+  docker exec -i -t ${1}:${UUID} /bin/bash
 }
 
 function do_run_console {
-   $RUN $ARGS --hostname=$1 --name=$1 --net=tnet \
+   $RUN $ARGS --hostname=${1} --name=${UUID}-${1} --net=${UUID}-tnet --net-alias=${1} \
      -v `pwd`:/code \
-     --entrypoint=bash $1
+     --entrypoint=bash ${1}:${UUID}
 }
 
 function do_build_console {
-   $RUN $ARGS --hostname=builder --name=builder --net=tnet \
+   $RUN $ARGS --hostname=builder --name=builder --net=${UUID}-tnet \
      -v `pwd`:/code \
      --entrypoint=bash marinatb/builder
 }
@@ -41,27 +45,27 @@ function do_build_console {
 function do_run {
   TGT=$1
   shift
-  $RUN $ARGS --hostname=$TGT --name=$TGT --net=tnet \
+  $RUN $ARGS --hostname=$TGT --name=${UUID}-$TGT --net=${UUID}-tnet --net-alias=${TGT} \
     -v `pwd`:/code \
-    $TGT $@
+    ${UUID}-$TGT $@
 }
 
 function do_launch {
-  $RUN $DARGS --hostname=$1 --name=$1 --net=tnet -v `pwd`:/code $1
+  $RUN $DARGS --hostname=${1} --name=${UUID}-${1} --net=${UUID}-tnet --net-alias=${1} -v `pwd`:/code ${1}:${UUID}
 }
 
 function do_terminate {
-  docker stop -t 0 $1
-  docker rm $1
+  docker stop -t 0 ${UUID}-${1}
+  docker rm ${UUID}-${1}
 }
 
 function do_restart {
-  do_terminate $1
-  do_launch $1
+  do_terminate ${UUID}-${1}
+  do_launch ${UUID}-${1}
 }
 
 function do_containerize {
-  docker build -t "$1" -f "${1}.dock" . 
+  docker build -t "${1}:${UUID}" -f "${1}.dock" . 
 }
 
 case $1 in
@@ -72,11 +76,12 @@ case $1 in
   "console") do_console $2 ;;
   "run-console") do_run_console $2 ;;
   "run") do_run $2 ;;
-  "net") docker network create --driver bridge tnet ;;
+  "net") docker network create --driver bridge ${UUID}-tnet ;;
   "launch") do_launch $2 ;;
   "terminate") do_terminate $2 ;;
   "restart") do_restart $2 ;;
   "containerize-system")
+    do_containerize db
     do_containerize api
     do_containerize access
     do_containerize accounts
