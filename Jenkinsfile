@@ -16,6 +16,7 @@ node {
 
 
     stage 'Test Setup'
+        env.UUID = "mtb-${JOB_NAME}-${BUILD_NUMBER}"
 
         sh './builder pkg'
 
@@ -40,12 +41,12 @@ node {
 
     stage 'Integration Tests'
 
-        sh 'docker run --privileged --hostname=builder --net=tnet -v `pwd`:/code --rm test [api-blueprint]'
+        sh 'docker run --privileged --hostname=test --net=mtb-${UUID}-tnet -v `pwd`:/code --rm test:${UUID} [api-blueprint]'
 
 
     stage 'Cleanup'
 
         sh './builder terminate-system'
-        sh 'docker network rm tnet'
+        sh 'docker network rm ${UUID}-tnet'
 }
 
