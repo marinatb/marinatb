@@ -42,14 +42,14 @@ node {
 
         stage 'Integration Tests'
 
-        sh 'env && timeout 15s docker run --net=${UUID}-tnet -v `pwd`:/code test:${UUID} [api-blueprint]'
+        sh 'env && timeout 15s docker run --net=${UUID} -v `pwd`:/code test:${UUID} [api-blueprint]'
 
     } finally {
 
         stage 'Cleanup'
 
         sh './builder terminate-system'
-        sh 'docker network rm ${UUID}-tnet || true'
+        sh 'docker network rm ${UUID} || true'
 
     }
 
