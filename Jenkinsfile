@@ -41,6 +41,7 @@ node {
 
     stage 'Integration Tests'
 
+        sh 'env'
         sh 'docker run --hostname=test --net=${UUID}-tnet -v "${WORKSPACE}/${JOB_NAME}":/code --rm test:${UUID} [api-blueprint]'
 
 
