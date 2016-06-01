@@ -41,7 +41,9 @@ node {
 
     stage 'Integration Tests'
 
-        sh 'env && timeout 15s docker run --hostname=test --net=${UUID}-tnet -v "${PWD}":/code --entrypoint /code/build/test/api/run_api_tests --rm test:${UUID} [api-blueprint]'
+        sh '''env && timeout 15s docker run -i --hostname=test --net=${UUID}-tnet -v "${PWD}":/code --entrypoint /bin/bash --rm test:${UUID} <<EOT
+/code/build/test/api/run_api_tests [api-blueprint]
+EOT'''
 
 
     stage 'Cleanup'
