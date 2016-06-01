@@ -41,7 +41,7 @@ node {
 
     stage 'Integration Tests'
 
-        sh 'env && docker run --privileged --hostname=test --net=${UUID}-tnet -v "${PWD}":/code --entrypoint /marina/run_api_tests --rm test:${UUID} - [api-blueprint]'
+        sh 'env && docker run --privileged --hostname=test --net=${UUID}-tnet -v "${PWD}":/code --entrypoint /marina/run_api_tests --rm test:${UUID} [api-blueprint]'
 
 
     stage 'Cleanup'
