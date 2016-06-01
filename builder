@@ -9,6 +9,8 @@ RUN="docker run"
 
 if [ -z "${UUID}" ]; then
     UUID=`git show --quiet --pretty=%h`
+else
+    UUID=${UUID//\//_}
 fi
 
 function do_cmake {
