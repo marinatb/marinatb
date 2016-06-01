@@ -16,8 +16,7 @@ node {
 
 
     stage 'Test Setup'
-        env.JOB_NAME_NORM = ${env.JOB_NAME}.replaceAll(/\//, '_')
-        env.UUID = "mtb-${env.JOB_NAME_NORM}-${env.BUILD_NUMBER}"
+        env.UUID = "mtb-${env.JOB_NAME}-${env.BUILD_NUMBER}"
 
         sh './builder pkg'
 
