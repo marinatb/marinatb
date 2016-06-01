@@ -33,13 +33,13 @@ function do_console {
 }
 
 function do_run_console {
-   $RUN $ARGS --hostname=${1} --name=${UUID}-${1} --net=${UUID}-tnet --net-alias=${1} \
+   $RUN $ARGS --hostname=${1} --name=${UUID}-${1} --net=${UUID} --net-alias=${1} \
      -v `pwd`:/code \
      --entrypoint=bash ${1}:${UUID}
 }
 
 function do_build_console {
-   $RUN $ARGS --hostname=builder --name=builder --net=${UUID}-tnet \
+   $RUN $ARGS --hostname=builder --name=builder --net=${UUID} \
      -v `pwd`:/code \
      --entrypoint=bash marinatb/builder
 }
@@ -47,13 +47,13 @@ function do_build_console {
 function do_run {
   TGT=$1
   shift
-  $RUN $ARGS --hostname=$TGT --name=${UUID}-$TGT --net=${UUID}-tnet --net-alias=${TGT} \
+  $RUN $ARGS --hostname=$TGT --name=${UUID}-$TGT --net=${UUID} --net-alias=${TGT} \
     -v `pwd`:/code \
     ${UUID}-$TGT $@
 }
 
 function do_launch {
-  $RUN $DARGS --hostname=${1} --name=${UUID}-${1} --net=${UUID}-tnet --net-alias=${1} -v `pwd`:/code ${1}:${UUID}
+  $RUN $DARGS --hostname=${1} --name=${UUID}-${1} --net=${UUID} --net-alias=${1} -v `pwd`:/code ${1}:${UUID}
 }
 
 function do_terminate {
@@ -67,7 +67,7 @@ function do_restart {
 }
 
 function do_containerize {
-  docker build -t "${1}:${UUID}" -f "${1}.dock" . 
+  docker build -t "${1}:${UUID}" -f "${1}.dock" .
 }
 
 case $1 in
@@ -78,7 +78,7 @@ case $1 in
   "console") do_console $2 ;;
   "run-console") do_run_console $2 ;;
   "run") do_run $2 ;;
-  "net") docker network create --driver bridge ${UUID}-tnet ;;
+  "net") docker network create --driver bridge ${UUID} ;;
   "launch") do_launch $2 ;;
   "terminate") do_terminate $2 ;;
   "restart") do_restart $2 ;;
