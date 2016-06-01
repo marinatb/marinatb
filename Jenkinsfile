@@ -48,8 +48,8 @@ node {
 
         stage 'Cleanup'
 
-        sh './builder terminate-system'
-        sh 'docker network rm ${UUID} || true'
+        sh './builder terminate-system || true'
+        sh 'docker network rm ${UUID}  || true'
 
     }
 
