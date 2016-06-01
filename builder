@@ -29,7 +29,7 @@ function do_ninja {
 }
 
 function do_console {
-  docker exec -i -t ${1}:${UUID} /bin/bash
+  docker exec -i -t ${UUID}-${1} /bin/bash
 }
 
 function do_run_console {
