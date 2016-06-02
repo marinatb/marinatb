@@ -4,6 +4,7 @@
 #include <memory>
 #include <array>
 #include <unordered_map>
+#include <unordered_set>
 #include <3p/json/src/json.hpp>
 
 namespace marina
@@ -201,6 +202,7 @@ namespace marina
       {
         // vxlan network identifier
         size_t vni{0};
+        std::unordered_set<std::string> switches;
       };
 
       Network(std::string);
@@ -322,12 +324,22 @@ namespace marina
   HwSpec operator+ (HwSpec, HwSpec);
   HwSpec operator- (HwSpec, HwSpec);
 
-  struct Embedding;
-
   // Computer ------------------------------------------------------------------
   class Computer
   {
     public:
+      struct EmbeddingInfo
+      {
+        EmbeddingInfo() = default;
+        EmbeddingInfo(std::string host, bool assigned);
+
+        static EmbeddingInfo fromJson(Json);
+        std::string host{"goblin"};
+        bool assigned{false};
+
+        Json json();
+      };
+
       Computer(std::string name);
       static Computer fromJson(Json);
 
@@ -359,8 +371,8 @@ namespace marina
       Interface getInterfaceByMac(std::string) const;
 
       //embedding info
-      Embedding embedding() const;
-      Computer & embedding(Embedding);
+      EmbeddingInfo embedding() const;
+      Computer & embedding(EmbeddingInfo);
 
       HwSpec hwspec() const;
 

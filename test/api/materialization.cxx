@@ -50,7 +50,7 @@ TEST_CASE("hi-marina-construct", "[api-mzn]")
 
   for(Computer & c : bp.computers())
   {
-    Embedding e = c.embedding();
+    Computer::EmbeddingInfo e = c.embedding();
     REQUIRE( e.host != "goblin" );
     REQUIRE( e.assigned == true );
   }

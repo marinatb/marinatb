@@ -11,6 +11,7 @@
 
 using std::string;
 using std::unique_ptr;
+using std::unordered_set;
 using std::future;
 using std::vector;
 using std::exception;
@@ -109,23 +110,24 @@ http::Response construct(Json j)
     //call out to all of the selected materialization hosts asking them to 
     //materialize their portion of the blueprint
     vector<future<http::Message>> replys;
+
+    //TODO: need to get a subset of hosts specific to this blueprint
+    //as it is now all hosts will get embedding commands
     for(const Host & h : embedding.hosts())
     {
-      string name = h.name();
       Blueprint lbp = bp.localEmbedding(h.name());
 
       replys.push_back(
         HttpRequest
         {
           HTTPMethod::POST,
-          "https://"+name+"/construct",
+          "https://"+h.name()+"/construct",
           //rq.dump()
           lbp.json().dump()
         }
         .response()
       );
     }
-
 
     // save the embedding to the database
     db->saveMaterialization(project, bpid, bp.json());
@@ -152,8 +154,8 @@ http::Response info(Json j)
   //get the materialization info
   try
   {
-    Json mzn = db->fetchMaterialization(project, bpid);
-    return http::Response{ http::Status::OK(), mzn.dump() };
+    Blueprint mzn = db->fetchMaterialization(project, bpid);
+    return http::Response{ http::Status::OK(), mzn.json().dump() };
   }
   catch(exception &e) { return unexpectedFailure("construct", j, e); }
 
@@ -175,7 +177,45 @@ http::Response destruct(Json j)
 
   try
   {
+    Blueprint bp = db->fetchMaterialization(project, bpid);
+    TestbedTopology topo = db->fetchHwTopo();
+    
+    //compute the set of hosts containing computers in this blueprint
+    unordered_set<string> hosts;
+    for(const Computer & c : bp.computers()) 
+    {
+      hosts.insert(c.embedding().host);
+    }
+
+    //TODO the embedding model should probably contain some information
+    //about the networks, when it does this will be the place to get
+    //rid of it
+    /*
+    for(const Network & n : bp.networks())
+    {
+
+    }*/
+   
+    //async command to remove computers and networks from relevant hosts
+    vector<future<http::Message>> replys;
+    for(const string & h : hosts)
+    {
+      Blueprint lbp = bp.localEmbedding(h);  
+      replys.push_back(
+        HttpRequest
+        {
+          HTTPMethod::POST,
+          "https://"+h+"/destruct",
+          lbp.json().dump()
+        }
+        .response()
+      );
+    }
+
+    TestbedTopology topo_ = unembed(bp, topo);
+
     db->deleteMaterialization(project, bpid);
+    db->setHwTopo(topo_.json());
 
     Json r;
     r["project"] = project;

@@ -22,12 +22,15 @@ TEST_CASE("hello-marina", "[embed]")
   TestbedTopology t = minibed();
   Blueprint b = hello_marina();
 
-  auto e = embed(b, t);
+  auto t_embedded = embed(b, t);
+  auto t_unembedded = unembed(b, t_embedded);
 
   for(const Computer & c : b.computers())
   {
     cout << c.name() << " --> " << c.embedding().host << endl;
   }
+
+  REQUIRE( t == t_unembedded );
 }
 
 TEST_CASE("mars", "[launch]")
@@ -51,11 +54,11 @@ TEST_CASE("mars", "[launch]")
         {
           return
           s.connectedHosts()
-            | filter([](auto h){ return h.experimentMachines().empty(); });
+            | filter([](auto h){ return h.machines().empty(); });
         });
 
   auto in_service_hosts_ = e.hosts() 
-    | filter([](auto h){ return h.experimentMachines().empty(); })
+    | filter([](auto h){ return h.machines().empty(); })
     | map<vector>([](auto x){ return x; });
 
   auto do_sort = [](auto & c)

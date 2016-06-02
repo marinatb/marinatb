@@ -171,7 +171,7 @@ string DB::saveMaterialization(string project, string bpid, Json mzn)
   return id;
 }
 
-Json DB::fetchMaterialization(string project, string bpid)
+Blueprint DB::fetchMaterialization(string project, string bpid)
 {
   string p{"'"+project+"'"},
          b{"'"+bpid+"'"};
@@ -209,7 +209,7 @@ Json DB::fetchMaterialization(string project, string bpid)
   LOG(INFO) << "fetched materialization";
 
   PQclear(res);
-  return j;
+  return Blueprint::fromJson(j);
 }
 
 void DB::deleteMaterialization(string project, string bpid)

@@ -182,6 +182,10 @@ void plopLinuxConfig(const Computer & c, string dst, string img)
       << endl
       << endl;
 
+  ofs << "hostname " << c.name()
+      << endl
+      << endl;
+
   for(const auto & i : c.interfaces())
   {
     Interface ifx = i.second;
@@ -210,6 +214,7 @@ void plopLinuxConfig(const Computer & c, string dst, string img)
   exec("modprobe nbd max_part=8");
 
   //copy the network init script to the guest drive image
+  exec("qemu-nbd --disconnect /dev/nbd0"); //just to be sure
   CmdResult cr = exec(fmt::format("qemu-nbd --connect=/dev/nbd0 {}", img));
   if(cr.code != 0) 
     execFail(cr, "failed to create network boodtdisk for qeumu image " + img);
@@ -287,7 +292,7 @@ void plopLinuxConfig(const Computer & c, string dst, string img)
 
 void launchVm(const Computer & c, const Blueprint & bp)
 {
-  size_t qk_id = qkId.create(c.interfaces().begin()->second.mac());
+  size_t qk_id = qkId.create(c.interfaces().at("cifx").mac());
 
   string arch{"IvyBridge"};
 
@@ -519,8 +524,60 @@ http::Response construct(Json j)
 
 }
 
-http::Response destruct(Json)
+void delXpDir(const Blueprint &bp)
 {
+  exec(fmt::format("rm -rf {}", xpdir(bp)));
+}
+
+void terminateComputers(const Blueprint & bp)
+{
+  for(const Computer & c : bp.computers())
+  {
+    size_t qk_id = qkId.get(c.interfaces().at("cifx").mac());
+    string cmd = 
+      fmt::format("kill `cat /{xpdir}/{name}-qpid`",
+        xpdir(bp),
+        qk_id
+      );
+    CmdResult cr = exec(cmd);
+    if(cr.code != 0) 
+      execFail(cr, 
+          fmt::format("failed to terminate computer {}/{}", bp.id(), c.name())
+      );
+  }
+}
+
+void terminateNetworks(const Blueprint & bp)
+{
+  for(const Network & n : bp.networks())
+  {
+    string br_id = fmt::format("mrtb-vbr-{}", bridgeId.get(n.guid()));
+    string cmd = fmt::format("ovs-vsctl del-br {}", br_id);
+    CmdResult cr = exec(cmd);
+    if(cr.code != 0) execFail(cr, "failed to terminate network bridge "+br_id);
+  }
+}
+
+http::Response destruct(Json j)
+{
+  LOG(INFO) << "destruct request";
+  LOG(INFO) << j.dump(2);
+
+  try
+  {
+    auto bp = Blueprint::fromJson(j);
+
+    delXpDir(bp);
+    terminateComputers(bp);
+    terminateNetworks(bp);
+
+    Json r;
+    r["status"] = "ok";
+    return http::Response{ http::Status::OK(), r.dump() };
+  }
+  catch(out_of_range &e) { return badRequest("destruct", j, e); }
+  catch(exception &e) { return unexpectedFailure("destruct", j, e); }
+
   throw runtime_error{"not implemented"};
 }
 

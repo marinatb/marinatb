@@ -68,7 +68,7 @@ namespace marina
     string os{"ubuntu-server-15.10"};
     Memory memory{4_gb}, disk{10_gb};
     size_t cores{2};
-    Embedding embedding;
+    Computer::EmbeddingInfo embedding;
 
     unordered_map<string, Interface> interfaces;
   };
@@ -327,15 +327,6 @@ Blueprint Blueprint::clone() const
 
   m._->links = _->links; //not a pointer based data structure
   return m;
-}
-
-auto extract(Json j, string tag, string context)
-{
-  try { return j.at(tag); }
-  catch(...) 
-  { 
-    throw out_of_range{"error extracting " + context+":"+tag};
-  }
 }
 
 Blueprint Blueprint::fromJson(Json j)
@@ -682,6 +673,12 @@ Network Network::fromJson(Json j)
 
   Json einfo = extract(j, "einfo", "network");
   n._->einfo.vni = extract(einfo, "vni", "einfo");
+  Json switches = extract(j, "switches", "network:einfo");
+  for(const Json & sw : switches)
+  {
+    string s = sw;
+    n._->einfo.switches.insert(s);
+  }
 
   return n;
 }
@@ -744,6 +741,7 @@ Json Network::json() const
   j["ipv4"] = ipv4().json();
   j["guid"] = _->guid;
   j["einfo"]["vni"] = _->einfo.vni;
+  j["einfo"]["switches"] = _->einfo.switches;
   return j;
 }
 
@@ -1019,7 +1017,8 @@ Computer Computer::fromJson(Json j)
   c.os(extract(j, "os", "computer"));
   c.memory(Memory::fromJson(extract(j, "memory", "computer")));
   c.cores(extract(j, "cores", "computer"));
-  c.embedding(Embedding::fromJson(extract(j, "embedding", "computer")));
+  c.embedding(Computer::EmbeddingInfo::fromJson(
+        extract(j, "embedding", "computer")));
 
   Json ifxs = extract(j, "interfaces", "computer");
   for(const Json & ij : ifxs)
@@ -1092,8 +1091,8 @@ Computer & Computer::remove_ifx(string name)
   return *this;
 }
 
-Embedding Computer::embedding() const { return _->embedding; }
-Computer & Computer::embedding(Embedding e)
+Computer::EmbeddingInfo Computer::embedding() const { return _->embedding; }
+Computer & Computer::embedding(Computer::EmbeddingInfo e)
 {
   _->embedding = e;
   return *this;
@@ -1190,6 +1189,29 @@ bool marina::isLinux(const Computer &)
 {
   return true;
 }
+
+Computer::EmbeddingInfo::EmbeddingInfo(string h, bool a)
+  : host{h},
+    assigned{a}
+{}
+
+Computer::EmbeddingInfo Computer::EmbeddingInfo::fromJson(Json j)
+{
+  string host = j.at("host");
+  bool assigned = j.at("assigned");
+  return Computer::EmbeddingInfo{host, assigned};
+}
+
+Json Computer::EmbeddingInfo::json()
+{
+  Json j;
+  j["host"] = host;
+  j["assigned"] = assigned;
+
+  return j;
+}
+
+
 
 // Link ------------------------------------------------------------------------
 Link::Link(Interface a, Interface b)

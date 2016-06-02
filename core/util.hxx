@@ -86,6 +86,14 @@ struct RtReq
 
 std::string mac_2_ifname(std::string mac);
 
+inline auto extract(Json j, std::string tag, std::string context)
+{
+  try { return j.at(tag); }
+  catch(...) 
+  { 
+    throw std::out_of_range{"error extracting " + context+":"+tag};
+  }
+}
 
 }
 

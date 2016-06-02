@@ -6,6 +6,7 @@
 #include <postgresql/libpq-fe.h>
 #include "core/topo.hxx"
 #include "core/blueprint.hxx"
+#include "core/blueprint.hxx"
 
 namespace marina
 {
@@ -23,7 +24,7 @@ namespace marina
       //materialization
       std::string saveMaterialization(std::string project, std::string bpid, 
                                       Json mzn);
-      Json fetchMaterialization(std::string project, std::string bpid);
+      Blueprint fetchMaterialization(std::string project, std::string bpid);
       void deleteMaterialization(std::string project, std::string bpid);
 
       //hardware topology

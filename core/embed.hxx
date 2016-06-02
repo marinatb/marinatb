@@ -7,6 +7,7 @@
 namespace marina {
 
 TestbedTopology embed(Blueprint, TestbedTopology);
+TestbedTopology unembed(Blueprint, TestbedTopology);
 
 }
 
