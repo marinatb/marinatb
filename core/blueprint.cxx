@@ -227,17 +227,6 @@ void Blueprint::removeNetwork(string name)
 }
 
 
-Json Blueprint::json() const
-{
-  Json j;
-  j["name"] = name();
-  j["networks"] = jtransform(_->networks);
-  j["computers"] = jtransform(_->computers);
-  j["links"] = jtransform(_->links);
-  j["id"] = _->id;
-  return j;
-}
-
 const vector<Link> & Blueprint::links() const
 {
   return _->links;
@@ -283,6 +272,7 @@ void Blueprint::connect(Network a, Network b)
 Blueprint Blueprint::localEmbedding(string host_id)
 {
   Blueprint b{name()};
+  b._->id = _->id;
 
   for(Computer c : computers())
   {
@@ -319,6 +309,7 @@ Blueprint Blueprint::localEmbedding(string host_id)
 Blueprint Blueprint::clone() const
 {
   Blueprint m{name()};
+  m._->id = _->id;
   for(auto x : _->networks)
     m._->networks.insert_or_assign(x.first, x.second.clone());
 
@@ -327,6 +318,17 @@ Blueprint Blueprint::clone() const
 
   m._->links = _->links; //not a pointer based data structure
   return m;
+}
+
+Json Blueprint::json() const
+{
+  Json j;
+  j["name"] = name();
+  j["networks"] = jtransform(_->networks);
+  j["computers"] = jtransform(_->computers);
+  j["links"] = jtransform(_->links);
+  j["id"] = _->id;
+  return j;
 }
 
 Blueprint Blueprint::fromJson(Json j)
@@ -652,37 +654,6 @@ Network::Network(string name)
   : _{new Network_{name}}
 { }
 
-Network Network::fromJson(Json j)
-{
-  string name = extract(j, "name", "network");
-  Network n{name};
-  n.latency(Latency::fromJson(extract(j, "latency", "network")));
-  n.capacity(Bandwidth::fromJson(extract(j, "capacity", "network")));
-
-  Json cnxs = extract(j, "connections", "network");
-  for(const Json & cnx : cnxs)
-  {
-    Neighbor nbr = Neighbor::fromJson(cnx);
-    n._->connections.push_back(nbr);
-  }
-
-  n._->guid = extract(j, "guid", "network");
-
-  Json ipv4_ = extract(j, "ipv4", "network");
-  n._->ipv4space = IpV4Address::fromJson(ipv4_);
-
-  Json einfo = extract(j, "einfo", "network");
-  n._->einfo.vni = extract(einfo, "vni", "einfo");
-  Json switches = extract(j, "switches", "network:einfo");
-  for(const Json & sw : switches)
-  {
-    string s = sw;
-    n._->einfo.switches.insert(s);
-  }
-
-  return n;
-}
-
 string Network::name() const { return _->name; }
 Network & Network::name(string name)
 {
@@ -729,6 +700,37 @@ const vector<Neighbor> & Network::connections() const
 Network::EmbeddingInfo & Network::einfo() const
 {
   return _->einfo;
+}
+
+Network Network::fromJson(Json j)
+{
+  string name = extract(j, "name", "network");
+  Network n{name};
+  n.latency(Latency::fromJson(extract(j, "latency", "network")));
+  n.capacity(Bandwidth::fromJson(extract(j, "capacity", "network")));
+
+  Json cnxs = extract(j, "connections", "network");
+  for(const Json & cnx : cnxs)
+  {
+    Neighbor nbr = Neighbor::fromJson(cnx);
+    n._->connections.push_back(nbr);
+  }
+
+  n._->guid = extract(j, "guid", "network");
+
+  Json ipv4_ = extract(j, "ipv4", "network");
+  n._->ipv4space = IpV4Address::fromJson(ipv4_);
+
+  Json einfo = extract(j, "einfo", "network");
+  n._->einfo.vni = extract(einfo, "vni", "einfo");
+  Json switches = extract(einfo, "switches", "network:einfo");
+  for(const Json & sw : switches)
+  {
+    string s = sw;
+    n._->einfo.switches.insert(s);
+  }
+
+  return n;
 }
 
 Json Network::json() const

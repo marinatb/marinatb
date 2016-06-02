@@ -108,6 +108,7 @@ void initOvs()
   
   exec("service openvswitch-switch stop");
   exec("rm -rf /var/log/openvswitch/* /etc/openvswitch/conf.db");
+  exec("rm -rf /var/run/openvswitch/mrtb*");
   CmdResult cr = exec("service openvswitch-switch start");
   if(cr.code != 0) execFail(cr, "failed to clean start openvswitch");
 
@@ -515,6 +516,11 @@ http::Response construct(Json j)
     launchNetworks(bp);
     launchComputers(bp);
 
+    LOG(INFO) << fmt::format("{name}({guid}) has been materialized",
+          fmt::arg("name", bp.name()),
+          fmt::arg("guid", bp.id())
+        );
+
     Json r;
     r["status"] = "ok";
     return http::Response{ http::Status::OK(), r.dump() };
@@ -533,11 +539,10 @@ void terminateComputers(const Blueprint & bp)
 {
   for(const Computer & c : bp.computers())
   {
-    size_t qk_id = qkId.get(c.interfaces().at("cifx").mac());
     string cmd = 
       fmt::format("kill `cat /{xpdir}/{name}-qpid`",
-        xpdir(bp),
-        qk_id
+        fmt::arg("xpdir", xpdir(bp)),
+        fmt::arg("name", c.name())
       );
     CmdResult cr = exec(cmd);
     if(cr.code != 0) 
@@ -567,9 +572,14 @@ http::Response destruct(Json j)
   {
     auto bp = Blueprint::fromJson(j);
 
-    delXpDir(bp);
     terminateComputers(bp);
     terminateNetworks(bp);
+    delXpDir(bp);
+    
+    LOG(INFO) << fmt::format("{name}({guid}) has been dematerialized",
+          fmt::arg("name", bp.name()),
+          fmt::arg("guid", bp.id())
+        );
 
     Json r;
     r["status"] = "ok";

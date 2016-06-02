@@ -26,7 +26,7 @@ Json svcRequest(string svc, string path, Json msg)
   return res.bodyAsJson();
 }
 
-TEST_CASE("hi-marina-construct", "[api-mzn]")
+TEST_CASE("hi-marina-construct", "[api-mzn-up]")
 {
   DB db{"postgresql://murphy:muffins@db"};
   db.setHwTopo(minibed().json());
@@ -54,8 +54,18 @@ TEST_CASE("hi-marina-construct", "[api-mzn]")
     REQUIRE( e.host != "goblin" );
     REQUIRE( e.assigned == true );
   }
+}
 
-  res = svcRequest("materialization", "destruct", rq);
+TEST_CASE("hi-marina-destruct", "[api-mzn-down]")
+{
+  DB db{"postgresql://murphy:muffins@db"};
+  db.setHwTopo(minibed().json());
+
+  Json rq = Json{};
+  rq["project"] = "backyard";
+  rq["bpid"] = "hello-marina";
+
+  auto res = svcRequest("materialization", "destruct", rq);
   
   REQUIRE( res.at("project").get<string>() == "backyard" );
   REQUIRE( res.at("bpid").get<string>() == "hello-marina" );
@@ -66,5 +76,4 @@ TEST_CASE("hi-marina-construct", "[api-mzn]")
   REQUIRE( res.at("project").get<string>() == "backyard" );
   REQUIRE( res.at("bpid").get<string>() == "hello-marina" );
   REQUIRE( res.at("action").get<string>() == "deleted" );
-
 }
