@@ -1,11 +1,10 @@
-#include "blueprints.hxx"
-#include "3p/pipes/pipes.hxx"
+#include "marinatb.hxx"
 
-using std::string;
+using namespace std;
 using namespace pipes;
-using namespace marina;
+using namespace marina;PP
 
-Blueprint marina::hello_marina()
+Blueprint bp()
 {
   Blueprint bp{"hello-marina"};
 
@@ -27,7 +26,6 @@ Blueprint marina::hello_marina()
     .capacity(1_gbps)
     .latency(5_ms)
     .ipv4("10.10.47.0", 24);
-
 
   auto a = comp("a"),
        b = comp("b"),
@@ -60,7 +58,6 @@ Blueprint marina::hello_marina()
             .latency(14_ms)
             .ipv4("104.7.31.0", 16);
 
-
   bp.connect(c.ifx("ifx1"), c_d);
   bp.connect(d.ifx("ifx0"), c_d);
 
@@ -72,3 +69,4 @@ Blueprint marina::hello_marina()
 
   return bp;
 }
+
