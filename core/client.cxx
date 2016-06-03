@@ -40,6 +40,7 @@ R"({A}usage: {X}marina {P}cmd{N}
    {C}experiment control{N}
    {X}cc {P}source{N}                {C}compile a blueprint{N}
    {X}save {P}blueprint project{N}   {C}save a compiled blueprint{N}
+   {X}rm {P}blueprint project{N}     {C}remove a saved blueprint{N}
    {X}up {P}project blueprint{N}     {C}materialize a blueprint{N}
    {X}down {P}project blueprint{N}   {C}dematerialize a blueprint{N}
 
@@ -248,6 +249,25 @@ void save(string bid, string pid)
   }
 }
 
+void rm(string bid, string pid)
+{
+  Json msg;
+  msg["project"] = pid;
+  msg["bpid"] = bid;
+
+  HttpRequest rq{
+    HTTPMethod::POST,
+    "https://api/blueprint/delete",
+    msg.dump(2)
+  };
+  auto res = rq.response().get();
+  if(res.msg->getStatusCode() != 200)
+  {
+    cerr << "failed to remove blueprint" << endl;
+    exit(1);
+  }
+}
+
 void up(string pid, string bid)
 {
   cout << __func__ << endl;
@@ -293,6 +313,11 @@ int main(int argc, char **argv)
   {
     if(argc != 4) fail();
     save(argv[2], argv[3]);
+  }
+  else if(cmd == "rm")
+  {
+    if(argc != 4) fail();
+    rm(argv[2], argv[3]);
   }
   else if(cmd == "up")
   {
