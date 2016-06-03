@@ -95,6 +95,22 @@ function do_containerize {
   docker build -t "$1" -f "${1}.dock" . 
 }
 
+#
+#function create_net {
+#  docker network create --driver bridge \
+#  --subnet=192.168.47.0/24 \
+#  --ip-range=192.168.47.64/26 \
+#  tnet
+#}
+#
+
+#
+function create_net {
+  docker network create --driver bridge \
+  tnet
+}
+#
+
 case $1 in
   "containerize") do_containerize $2 ;;
   "cmake") do_cmake ;;
@@ -103,7 +119,7 @@ case $1 in
   "console") do_console $2 ;;
   "run-console") do_run_console $2 ;;
   "run") do_run $2 ;;
-  "net") docker network create --driver bridge tnet ;;
+  "net")  create_net ;;
   "launch") do_launch $2 ;;
   "terminate") do_terminate $2 ;;
   "restart") do_restart $2 ;;

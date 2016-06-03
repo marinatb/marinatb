@@ -40,6 +40,10 @@ namespace marina
       std::string name() const;
       Blueprint & name(std::string);
 
+      //the project this blueprint is assigned to, may be empty initially
+      std::string project() const;
+      Blueprint & project(std::string);
+
       //id a UUID that uniquely identifies this blueprint in the universe of
       //all possible blueprints
       std::string id() const;
@@ -330,12 +334,15 @@ namespace marina
     public:
       struct EmbeddingInfo
       {
+        enum class LaunchState { None, Queued, Launching, Up };
+
         EmbeddingInfo() = default;
         EmbeddingInfo(std::string host, bool assigned);
 
         static EmbeddingInfo fromJson(Json);
         std::string host{"goblin"};
         bool assigned{false};
+        LaunchState launch_state{LaunchState::None};
 
         Json json();
       };
@@ -371,7 +378,7 @@ namespace marina
       Interface getInterfaceByMac(std::string) const;
 
       //embedding info
-      EmbeddingInfo embedding() const;
+      EmbeddingInfo & embedding() const;
       Computer & embedding(EmbeddingInfo);
 
       HwSpec hwspec() const;

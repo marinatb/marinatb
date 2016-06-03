@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <mutex>
 #include <functional>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
@@ -49,8 +50,11 @@ std::string generate_guid();
 std::function<http::Response(http::Message)> 
 jsonIn(std::function<http::Response(Json)>);
 
-http::Response badRequest(std::string path, Json & j, std::out_of_range &e);
-http::Response unexpectedFailure(std::string path, Json & j, std::exception &e);
+http::Response 
+badRequest(std::string path, const Json & j, std::out_of_range &e);
+
+http::Response 
+unexpectedFailure(std::string path, const Json & j, std::exception &e);
 
 struct CmdResult
 {
@@ -66,14 +70,23 @@ class LinearIdCacheMap
   public:
     Value create(Key key)
     {
+      lk_.lock();
       if(m_.find(key) != m_.end()) return m_.at(key);
+      lk_.unlock();
 
       return m_[key] = v_++;
     }
 
-    Value get(Key key) { return m_.at(key); }
+    Value get(Key key) 
+    { 
+      lk_.lock();
+      return m_.at(key); 
+      lk_.unlock();
+    }
 
   private:
+    std::mutex mtx_;
+    std::unique_lock<std::mutex> lk_{mtx_, std::defer_lock_t{}};
     Value v_{};
     std::unordered_map<Key, Value> m_;
 };

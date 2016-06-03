@@ -69,7 +69,7 @@ marina::jsonIn(function<http::Response(Json)> f)
   };
 }
 
-http::Response marina::badRequest(string path, Json & j, out_of_range &e)
+http::Response marina::badRequest(string path, const Json & j, out_of_range &e)
 {
   LOG(ERROR) << "[" << path << "] bad request";
   LOG(ERROR) << j.dump(2);
@@ -77,7 +77,8 @@ http::Response marina::badRequest(string path, Json & j, out_of_range &e)
   return http::Response{ http::Status::BadRequest(), "" };
 }
 
-http::Response marina::unexpectedFailure(string path, Json & j, exception &e)
+http::Response 
+marina::unexpectedFailure(string path, const Json & j, exception &e)
 {
   LOG(ERROR) << "[" << path << "] unexpected failure";
   LOG(ERROR) << j.dump(2);

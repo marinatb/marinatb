@@ -3,14 +3,17 @@
  */
 
 #include <cstdlib>
+#include <thread>
+#include <mutex>
 #include <fstream>
 #include <unordered_map>
 #include <fmt/format.h>
 #include <gflags/gflags.h>
+#include "3p/pipes/pipes.hxx"
 #include "common/net/http_server.hxx"
 #include "core/blueprint.hxx"
 #include "core/util.hxx"
-#include "3p/pipes/pipes.hxx"
+#include "core/db.hxx"
 
 using std::string;
 using std::to_string;
@@ -19,6 +22,10 @@ using std::unique_ptr;
 using std::vector;
 using std::ofstream;
 using std::endl;
+using std::thread;
+using std::mutex;
+using std::unique_lock;
+using std::defer_lock_t;
 using std::runtime_error;
 using std::out_of_range;
 using std::exception;
@@ -39,8 +46,25 @@ void initQemuKvm();
  *    local volatile runtime state
  */
 
-/*    bridge info   */
+/*    
+ *    bridge info
+ *    +++++++++++
+ *
+ *    these data structures are thread safe
+ *
+ */
+
 LinearIdCacheMap<string, size_t> bridgeId, vhostId, qkId;
+
+/*
+ * a map to keep track of the blueprints that are live on this host
+ */
+
+unordered_map<string, Blueprint> live_blueprints;
+mutex lb_mtx;
+unique_lock<mutex> lb_lk{lb_mtx, defer_lock_t{}};
+
+unique_ptr<DB> db{nullptr};
 
 /*
  *    command line flags
@@ -67,6 +91,8 @@ int main(int argc, char **argv)
 {
   Glog::init("host-control");
   LOG(INFO) << "host-control starting";
+
+  db.reset(new DB{"postgresql://murphy:muffins@db"});
 
   gflags::SetUsageMessage(
       "usage: host-control -pbr_mac <mac> -pbr_addr <addr>");
@@ -267,7 +293,8 @@ void plopLinuxConfig(const Computer & c, string dst, string img)
   ofs = ofstream{svc};
 
   ofs << "[Unit]" << endl
-      << "Description=Init this computer as a part of a marinatb experiment" << endl
+      << "Description=Init this computer as a part of a marinatb experiment" 
+      << endl
       << endl
 
       << "[Service]" << endl
@@ -390,6 +417,7 @@ void createNetworkBridge(const Network & n)
 {
   //create a bridge for the network
   size_t net_id = bridgeId.create(n.guid());
+
   string br_id = fmt::format("mrtb-vbr-{}", net_id);
 
   string cmd = fmt::format(
@@ -489,11 +517,23 @@ void launchNetworks(const Blueprint & bp)
   }
 }
 
-void launchComputers(const Blueprint & bp)
+void launchComputers(Blueprint & bp)
 {
-  for(const Computer & c : bp.computers())
+  using LS = Computer::EmbeddingInfo::LaunchState;
+  for(Computer & c : bp.computers())
   {
+    c.embedding().launch_state = LS::Queued;
+  }
+
+  //TODO privide something more efficient like update node launch state
+  //or some such
+  db->saveMaterialization(bp.project(), bp.name(), bp.json());
+
+  for(Computer & c : bp.computers())
+  {
+    c.embedding().launch_state = LS::Launching;
     launchVm(c, bp);
+    c.embedding().launch_state = LS::Up;
   }
 }
 
@@ -502,31 +542,44 @@ http::Response construct(Json j)
   LOG(INFO) << "construct request";
   LOG(INFO) << j.dump(2);
 
-  try
-  {
-    auto bp = Blueprint::fromJson(j); 
+  thread t{[j](){
+    try
+    {
+      auto bp = Blueprint::fromJson(j); 
 
-    LOG(INFO) 
-      << "materializaing " 
-      << bp.computers().size()  << " computers"
-      << " across "
-      << bp.networks().size() << " networks";
+      lb_lk.lock();
+      live_blueprints.insert_or_assign(bp.id(), bp);
+      lb_lk.unlock();
 
-    initXpDir(bp);
-    launchNetworks(bp);
-    launchComputers(bp);
+      LOG(INFO) 
+        << "materializaing " 
+        << bp.computers().size()  << " computers"
+        << " across "
+        << bp.networks().size() << " networks";
 
-    LOG(INFO) << fmt::format("{name}({guid}) has been materialized",
-          fmt::arg("name", bp.name()),
-          fmt::arg("guid", bp.id())
-        );
+      initXpDir(bp);
+      launchNetworks(bp);
+      launchComputers(bp);
 
-    Json r;
-    r["status"] = "ok";
-    return http::Response{ http::Status::OK(), r.dump() };
-  }
-  catch(out_of_range &e) { return badRequest("construct", j, e); }
-  catch(exception &e) { return unexpectedFailure("construct", j, e); }
+      LOG(INFO) << fmt::format("{name}({guid}) has been materialized",
+            fmt::arg("name", bp.name()),
+            fmt::arg("guid", bp.id())
+          );
+
+    }
+    catch(out_of_range &e) { badRequest("construct", j, e); }
+    catch(exception &e) { unexpectedFailure("construct", j, e); }
+  }};
+
+  //TODO perhaps the better thing to do here would be to create a
+  //thread pointer and put it in a map that is keyed on the blueprint
+  //id that is being materialized, that way we could support things
+  //like cancellation and possibly better progress reporting
+  t.detach();
+
+  Json r;
+  r["status"] = "materializing";
+  return http::Response{ http::Status::OK(), r.dump() };
 
 }
 
@@ -591,9 +644,37 @@ http::Response destruct(Json j)
   throw runtime_error{"not implemented"};
 }
 
-http::Response info(Json)
+http::Response info(Json j)
 {
-  throw runtime_error{"not implemented"};
+  LOG(INFO) << "info request";
+
+  //extract request parameters
+  string bpid;
+  try
+  {
+    bpid = extract(j, "bpid", "info-request");
+  }
+  catch(out_of_range &e) { return badRequest("info", j, e); }
+
+  try
+  {
+    return http::Response{ 
+      http::Status::OK(), 
+      live_blueprints.at(bpid).json().dump(2)
+    };
+  }
+  catch(out_of_range)
+  {
+    Json msg;
+    msg["error"] = "bpid "+bpid+" is not being materialized here";
+
+    return http::Response{
+      http::Status::BadRequest(),
+      msg.dump(2)
+    };
+  }
+  //something we did not plan for, but keep the service going none the less
+  catch(exception &e) { return unexpectedFailure("list", j, e); }
 }
 
 http::Response list(Json)

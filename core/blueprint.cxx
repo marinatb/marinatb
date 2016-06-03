@@ -40,7 +40,7 @@ namespace marina
         id{generate_guid()}
     {}
 
-    string name, id;
+    string name, id, project;
     unordered_map<string, Network> networks;
     unordered_map<string, Computer> computers;
     vector<Link> links;
@@ -98,6 +98,13 @@ string Blueprint::name() const { return _->name; }
 Blueprint & Blueprint::name(string name)
 {
   _->name = name;
+  return *this;
+}
+
+string Blueprint::project() const { return _->project; }
+Blueprint & Blueprint::project(string project)
+{
+  _->project = project;
   return *this;
 }
 
@@ -324,6 +331,7 @@ Json Blueprint::json() const
 {
   Json j;
   j["name"] = name();
+  j["project"] = project();
   j["networks"] = jtransform(_->networks);
   j["computers"] = jtransform(_->computers);
   j["links"] = jtransform(_->links);
@@ -335,6 +343,7 @@ Blueprint Blueprint::fromJson(Json j)
 {
   string name = extract(j, "name", "blueprint");
   Blueprint bp{name};
+  bp._->project = extract(j, "project", "blueprint");
   bp._->id = extract(j, "id", "blueprint");
 
   Json computers = extract(j, "computers", "blueprint");
@@ -1093,7 +1102,7 @@ Computer & Computer::remove_ifx(string name)
   return *this;
 }
 
-Computer::EmbeddingInfo Computer::embedding() const { return _->embedding; }
+Computer::EmbeddingInfo & Computer::embedding() const { return _->embedding; }
 Computer & Computer::embedding(Computer::EmbeddingInfo e)
 {
   _->embedding = e;
@@ -1201,7 +1210,17 @@ Computer::EmbeddingInfo Computer::EmbeddingInfo::fromJson(Json j)
 {
   string host = j.at("host");
   bool assigned = j.at("assigned");
-  return Computer::EmbeddingInfo{host, assigned};
+  
+  Computer::EmbeddingInfo ei{host, assigned};
+
+  string ls = extract(j, "launch-state", "computer:embeddinginfo");
+  if(ls == "None") ei.launch_state = LaunchState::None;
+  else if(ls == "Queued") ei.launch_state = LaunchState::Queued;
+  else if(ls == "Launching") ei.launch_state = LaunchState::Launching;
+  else if(ls == "Up") ei.launch_state = LaunchState::Up;
+  else throw runtime_error{"unknown luanch state: "+ls};
+
+  return ei;
 }
 
 Json Computer::EmbeddingInfo::json()
@@ -1209,6 +1228,16 @@ Json Computer::EmbeddingInfo::json()
   Json j;
   j["host"] = host;
   j["assigned"] = assigned;
+
+  string ls;
+  switch(launch_state)
+  {
+    case LaunchState::None: ls = "None"; break;
+    case LaunchState::Queued: ls = "Queued"; break;
+    case LaunchState::Launching: ls = "Launching"; break;
+    case LaunchState::Up: ls = "Up"; break;
+  }
+  j["launch-state"] = ls;
 
   return j;
 }

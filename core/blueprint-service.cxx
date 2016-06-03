@@ -3,7 +3,7 @@
  */
 
 #include "blueprint.hxx"
-#include "db.hxx"
+#include "core/db.hxx"
 #include "core/util.hxx"
 #include "core/compilation.hxx"
 
@@ -67,7 +67,9 @@ http::Response save(Json j)
   //try to save the blueprint
   try 
   {
-    db->saveBlueprint(project, source);
+    Blueprint bp = Blueprint::fromJson(source);
+    bp.project(project);
+    db->saveBlueprint(project, bp.json().dump(2));
     
     Json r;
     r["project"] = project;

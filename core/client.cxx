@@ -270,7 +270,21 @@ void rm(string bid, string pid)
 
 void up(string pid, string bid)
 {
-  cout << __func__ << endl;
+  Json msg;
+  msg["project"] = pid;
+  msg["bpid"] = bid;
+
+  HttpRequest rq{
+    HTTPMethod::POST,
+    "https://api/materialization/construct",
+    msg.dump(2)
+  };
+  auto res = rq.response().get();
+  if(res.msg->getStatusCode() != 200)
+  {
+    cerr << "failed to materialize blueprint" << endl;
+    exit(1);
+  }
 }
 
 void down(string pid, string bid)
