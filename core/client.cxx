@@ -5,12 +5,16 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <fstream>
+#include <dlfcn.h>
 #include <fmt/format.h>
 #include "common/net/http_request.hxx"
+#include "core/util.hxx"
 #include "core/blueprint.hxx"
 
 using std::string;
 using std::vector;
+using std::ofstream;
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -133,7 +137,67 @@ void mzs(string pid)
 
 void cc(string src)
 {
-  cout << __func__ << endl;
+  char *mrsrc = getenv("MARINA_SRC");
+
+  if(mrsrc == nullptr)
+  {
+    cerr 
+      << "you must set the environment variable MARINA_SRC to use cc" << endl;
+    exit(1);
+  }
+  
+  char *home = getenv("HOME");
+  if(home == nullptr)
+  {
+    cerr
+      << "are you lost? where is $HOME?" << endl;
+    exit(1);
+  }
+
+  exec(fmt::format("mkdir -p {}/.marina/cc", home));
+  string lib = fmt::format("{}/.marina/cc/{}.so", home, basename(src.c_str()));
+  CmdResult cr = 
+    exec(
+      fmt::format(
+        "clang++ "
+        "-stdlib=libc++ -std=c++14 -fPIC -shared "
+        "-I{mrsrc} -I/usr/local/include/c++/v1 "
+        "{src} "
+        "-o {out}",
+        fmt::arg("src", src),
+        fmt::arg("out", lib),
+        fmt::arg("mrsrc", mrsrc)
+      )
+    );
+  
+  if(cr.code != 0)
+  {
+    cerr << "failed to compile " << src << endl;
+    cerr << cr.output << endl;
+    exit(1);
+  }
+
+  //load the compiled user code and get the blueprint
+  void *dh = dlopen(lib.c_str(), RTLD_LAZY);
+
+  if(dh == nullptr)
+  {
+    cerr << "error loading user model code" << endl;
+    cerr << dlerror() << endl;
+    exit(1);
+  }
+
+  Blueprint (*bpf)();
+  bpf = (Blueprint (*)())dlsym(dh, "bp");
+  Blueprint bp = bpf();
+  cout << "compiled blueprint " << bp.name() << endl;
+  cout << "found " << bp.computers().size() << " computers" << endl;
+  cout << "found " << bp.networks().size() << " networks" << endl;
+
+  string ir = fmt::format("{}/.marina/cc/{}.json", home, basename(src.c_str()));
+  ofstream ofs{ir};
+  ofs << bp.json().dump(2);
+  ofs.close();
 }
 
 void save(string bid, string pid)

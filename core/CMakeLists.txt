@@ -65,7 +65,7 @@ target_link_libraries( host-control
 )
 
 add_executable( marina client.cxx )
-target_link_libraries( marina marina-core )
+target_link_libraries( marina marina-core dl )
 
 install(TARGETS marina-core accounts access blueprint materialization host-control
   RUNTIME DESTINATION bin

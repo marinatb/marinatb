@@ -1,10 +1,9 @@
-#include "marinatb.hxx"
+#include "marina.hxx"
 
 using namespace std;
-using namespace pipes;
-using namespace marina;PP
+using namespace marina;
 
-Blueprint bp()
+BLUEPRINT
 {
   Blueprint bp{"hello-marina"};
 
