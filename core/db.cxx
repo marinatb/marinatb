@@ -8,6 +8,7 @@
 #include "core/db.hxx"
 
 using std::string;
+using std::vector;
 using std::stoul;
 using std::runtime_error;
 using std::out_of_range;
@@ -99,6 +100,35 @@ Blueprint DB::fetchBlueprint(string project, string bp_name)
 
   PQclear(res);
   return Blueprint::fromJson(json);
+}
+
+vector<Blueprint> DB::fetchBlueprints(string project)
+{
+  string q = fmt::format(
+    "SELECT doc FROM blueprints where project = "
+      "(SELECT id FROM projects WHERE name = '{pname}')",
+    fmt::arg("pname", project)
+  );
+
+  PGresult *res = PQexec(conn_, q.c_str());
+  if(PQresultStatus(res) != PGRES_TUPLES_OK)
+  {
+    LOG(ERROR) << "fetching project blueprints failed";
+    LOG(INFO) << PQerrorMessage(conn_);
+    PQclear(res);
+    throw runtime_error{"pq query failure"};
+  }
+
+  vector<Blueprint> result;
+  size_t n = PQntuples(res);
+  for(size_t i=0; i<n; ++i)
+  {
+    string j{PQgetvalue(res, i, 0)};
+    auto js = Json::parse(j);
+    result.push_back(Blueprint::fromJson(js)); 
+  }
+
+  return result;
 }
 
 void DB::deleteBlueprint(string project, string bp_name)

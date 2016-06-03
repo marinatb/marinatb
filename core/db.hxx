@@ -19,6 +19,7 @@ namespace marina
       //blueprint
       std::string saveBlueprint(std::string project, Json src);  
       Blueprint fetchBlueprint(std::string project, std::string bp_name);
+      std::vector<Blueprint> fetchBlueprints(std::string project);
       void deleteBlueprint(std::string project, std::string bp_name);
 
       //materialization

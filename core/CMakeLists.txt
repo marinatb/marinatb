@@ -64,6 +64,9 @@ target_link_libraries( host-control
   proxygenhttpserver 
 )
 
+add_executable( marina client.cxx )
+target_link_libraries( marina marina-core )
+
 install(TARGETS marina-core accounts access blueprint materialization host-control
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
