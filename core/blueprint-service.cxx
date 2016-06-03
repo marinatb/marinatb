@@ -130,7 +130,12 @@ http::Response check(Json j)
   try
   {
     Blueprint bp = db->fetchBlueprint(project, bpid);
+
+
+    //TODO implement
     //Diagnostics d = check(bp) ...
+
+
     Json r;
     r["project"] = project;
     r["bpid"] = bpid;

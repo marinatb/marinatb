@@ -15,6 +15,8 @@
 using std::string;
 using std::vector;
 using std::ofstream;
+using std::ifstream;
+using std::istreambuf_iterator;
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -135,6 +137,18 @@ void mzs(string pid)
 
 }
 
+string get_home()
+{
+  char *home = getenv("HOME");
+  if(home == nullptr)
+  {
+    cerr
+      << "are you lost? where is $HOME?" << endl;
+    exit(1);
+  }
+  return string{home};
+}
+
 void cc(string src)
 {
   char *mrsrc = getenv("MARINA_SRC");
@@ -146,13 +160,7 @@ void cc(string src)
     exit(1);
   }
   
-  char *home = getenv("HOME");
-  if(home == nullptr)
-  {
-    cerr
-      << "are you lost? where is $HOME?" << endl;
-    exit(1);
-  }
+  string home = get_home();
 
   exec(fmt::format("mkdir -p {}/.marina/cc", home));
   string lib = fmt::format("{}/.marina/cc/{}.so", home, basename(src.c_str()));
@@ -194,7 +202,11 @@ void cc(string src)
   cout << "found " << bp.computers().size() << " computers" << endl;
   cout << "found " << bp.networks().size() << " networks" << endl;
 
-  string ir = fmt::format("{}/.marina/cc/{}.json", home, basename(src.c_str()));
+  string ir = fmt::format("{}/.marina/cc/{}.json", 
+      home, 
+      bp.name()
+  );
+
   ofstream ofs{ir};
   ofs << bp.json().dump(2);
   ofs.close();
@@ -202,7 +214,38 @@ void cc(string src)
 
 void save(string bid, string pid)
 {
-  cout << __func__ << endl;
+  string home = get_home();
+  string ir = fmt::format("{}/.marina/cc/{}.json", home, bid);
+
+  ifstream ifs{ir, std::ios::binary};
+  if(!ifs.good())
+  {
+    cerr << "could not open find blueprint " << bid << endl;
+    exit(1);
+  }
+
+  string ir_text;
+  ifs.seekg(0, std::ios::end);
+  ir_text.reserve(ifs.tellg());
+  ifs.seekg(0, std::ios::beg);
+
+  ir_text.assign(istreambuf_iterator<char>(ifs), istreambuf_iterator<char>());
+
+  Json msg;
+  msg["project"] = pid;
+  msg["source"] = Json::parse(ir_text);
+
+  HttpRequest rq{
+    HTTPMethod::POST,
+    "https://api/blueprint/save",
+    msg.dump(2)
+  };
+  auto res = rq.response().get();
+  if(res.msg->getStatusCode() != 200)
+  {
+    cerr << "failed to save blueprint" << endl;
+    exit(1);
+  }
 }
 
 void up(string pid, string bid)
