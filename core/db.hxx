@@ -26,6 +26,7 @@ namespace marina
       std::string saveMaterialization(std::string project, std::string bpid, 
                                       Json mzn);
       Blueprint fetchMaterialization(std::string project, std::string bpid);
+      std::vector<Blueprint> fetchMaterializations(std::string project);
       void deleteMaterialization(std::string project, std::string bpid);
 
       //hardware topology

@@ -131,6 +131,7 @@ vector<Blueprint> DB::fetchBlueprints(string project)
   return result;
 }
 
+
 void DB::deleteBlueprint(string project, string bp_name)
 {
  
@@ -240,6 +241,37 @@ Blueprint DB::fetchMaterialization(string project, string bpid)
 
   PQclear(res);
   return Blueprint::fromJson(j);
+}
+
+vector<Blueprint> DB::fetchMaterializations(string project)
+{
+  string q = fmt::format(
+    "SELECT doc FROM materializations where blueprint IN "
+      "(SELECT id FROM blueprints WHERE project = "
+        "(SELECT id FROM projects WHERE name = '{pname}')"
+      ")",
+    fmt::arg("pname", project)
+  );
+
+  PGresult *res = PQexec(conn_, q.c_str());
+  if(PQresultStatus(res) != PGRES_TUPLES_OK)
+  {
+    LOG(ERROR) << "fetching project materializations failed";
+    LOG(INFO) << PQerrorMessage(conn_);
+    PQclear(res);
+    throw runtime_error{"pq query failure"};
+  }
+
+  vector<Blueprint> result;
+  size_t n = PQntuples(res);
+  for(size_t i=0; i<n; ++i)
+  {
+    string j{PQgetvalue(res, i, 0)};
+    auto js = Json::parse(j);
+    result.push_back(Blueprint::fromJson(js)); 
+  }
+
+  return result;
 }
 
 void DB::deleteMaterialization(string project, string bpid)

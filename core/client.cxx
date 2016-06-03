@@ -95,7 +95,40 @@ void bps(string pid)
 
 void mzs(string pid)
 {
-  cout << __func__ << endl;
+  Json msg;
+  msg["project"] = pid;
+
+  HttpRequest rq{
+    HTTPMethod::POST,
+    url+"/materialization/list",
+    msg.dump(2)
+  };
+
+  auto res = rq.response().get();
+  if(res.msg->getStatusCode() != 200)
+  {
+    cerr << "fetching materializations failed" << endl;
+    cerr << "code: " << res.msg->getStatusCode() << endl;
+    exit(1);
+  }
+
+  Json j = res.bodyAsJson();
+  try
+  {
+    Json js = j.at("materializations");
+    for(const Json x : js)
+    {
+      Blueprint b = Blueprint::fromJson(x);
+      cout << b.name() << endl;
+    }
+  }
+  catch(out_of_range &)
+  {
+    cerr << "fetching materializations failed" << endl;
+    cerr << "marinatb returned:" << endl;
+    cerr << j << endl;
+  }
+
 }
 
 void cc(string src)

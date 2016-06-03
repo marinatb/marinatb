@@ -228,8 +228,29 @@ http::Response destruct(Json j)
   catch(exception &e) { return unexpectedFailure("del", j, e); }
 }
 
-http::Response list(Json)
+http::Response list(Json j)
 {
-  return http::Response{ http::Status::OK(), not_implemented };
+  LOG(INFO) << "list request";
+
+  //extract request parameters
+  string project;
+  try
+  {
+    project = j.at("project");
+  }
+  catch(out_of_range &e) { return badRequest("list", j, e); }
+
+  try
+  {
+    auto bps = db->fetchMaterializations(project);
+
+    Json r;
+    r["status"] = "ok";
+    r["materializations"] = jtransform(bps);
+
+    return http::Response{ http::Status::OK(), r.dump() };
+  }
+  //something we did not plan for, but keep the service going none the less
+  catch(exception &e) { return unexpectedFailure("list", j, e); }
 }
 

@@ -220,6 +220,5 @@ http::Response list(Json j)
   }
   //something we did not plan for, but keep the service going none the less
   catch(exception &e) { return unexpectedFailure("list", j, e); }
-
 }
 
