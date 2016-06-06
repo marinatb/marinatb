@@ -69,7 +69,7 @@ http::Response save(Json j)
   {
     Blueprint bp = Blueprint::fromJson(source);
     bp.project(project);
-    db->saveBlueprint(project, bp.json().dump(2));
+    db->saveBlueprint(project, bp.json());
     
     Json r;
     r["project"] = project;

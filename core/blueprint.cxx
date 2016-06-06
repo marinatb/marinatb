@@ -315,6 +315,7 @@ Blueprint Blueprint::localEmbedding(string host_id)
 
 Blueprint Blueprint::clone() const
 {
+    string project;
   Blueprint m{name()};
   m._->id = _->id;
   for(auto x : _->networks)

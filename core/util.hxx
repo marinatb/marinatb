@@ -104,6 +104,7 @@ inline auto extract(Json j, std::string tag, std::string context)
   try { return j.at(tag); }
   catch(...) 
   { 
+    LOG(ERROR) << j;
     throw std::out_of_range{"error extracting " + context+":"+tag};
   }
 }
