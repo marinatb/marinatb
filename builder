@@ -17,6 +17,7 @@ read -d '' USAGE <<- "EOF"
       terminate-system        -- terminate the whole system
       restart-system          -- restart the whole system
       net                     -- create the ops network
+      cnet                    -- setup the control net
 
     development:
       pkg                     -- package up all deps of the core ops components.
@@ -111,6 +112,17 @@ function create_net {
 }
 #
 
+function do_cnet {
+  cp /etc/hosts /tmp/hosts
+  cp /tmp/hosts /tmp/hosts.bak
+  dbaddr=`docker inspect \
+    --format='{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \
+    db`
+  grep -q '.*db' /tmp/hosts && \
+    sed -i "s/.*db/$dbaddr db/" /tmp/hosts || echo "$dbaddr db" >> /tmp/hosts
+  sudo cp /tmp/hosts /etc/hosts
+}
+
 case $1 in
   "containerize") do_containerize $2 ;;
   "cmake") do_cmake ;;
@@ -120,6 +132,7 @@ case $1 in
   "run-console") do_run_console $2 ;;
   "run") do_run $2 ;;
   "net")  create_net ;;
+  "cnet") do_cnet ;;
   "launch") do_launch $2 ;;
   "terminate") do_terminate $2 ;;
   "restart") do_restart $2 ;;
