@@ -50,6 +50,9 @@ int main()
   
   srv.onPost( "/materialization/list", 
       relay("materialization", "/list") );
+  
+  srv.onPost( "/materialization/topo", 
+      relay("materialization", "/topo") );
 
   srv.run();
     

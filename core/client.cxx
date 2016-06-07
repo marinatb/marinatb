@@ -11,6 +11,7 @@
 #include "common/net/http_request.hxx"
 #include "core/util.hxx"
 #include "core/blueprint.hxx"
+#include "core/topo.hxx"
 
 using std::string;
 using std::vector;
@@ -33,12 +34,12 @@ static const string ATTN {"\e[38;5;214m"};
 static string usage = fmt::format(
 R"({A}usage: {X}marina {P}cmd{N}
   {P}cmd{N}:
-   {C}general{N}
+   {C}project info{N}
    {X}bps{N} {P}project        {C}show blueprints in a project
    {X}mzs{N} {P}project        {C}show materializations in a project
 
    {C}experiment control{N}
-   {X}cc {P}source{N}                {C}compile a blueprint{N}
+   {X}bcc {P}source{N}               {C}compile a blueprint{N}
    {X}save {P}blueprint project{N}   {C}save a compiled blueprint{N}
    {X}rm {P}blueprint project{N}     {C}remove a saved blueprint{N}
    {X}up {P}project blueprint{N}     {C}materialize a blueprint{N}
@@ -47,6 +48,10 @@ R"({A}usage: {X}marina {P}cmd{N}
    {C}experiment access
    {X}console {P}mzn node         {C}get a vnc console on a materialized node
    {X}ssh {P}mzn node             {C}get a secure shell on a materialized node
+   
+   {C}testbed control
+   {X}tcc {P}source{N}      {C}compile a testbed topology{N}
+   {X}topo {P}topology{N}   {C}set the testbed topology
 {N})",
   fmt::arg("A", ATTN),
   fmt::arg("C", COMMENT),
@@ -150,7 +155,7 @@ string get_home()
   return string{home};
 }
 
-void cc(string src)
+void* compileSrc(string src)
 {
   char *mrsrc = getenv("MARINA_SRC");
 
@@ -185,8 +190,8 @@ void cc(string src)
     cerr << cr.output << endl;
     exit(1);
   }
-
-  //load the compiled user code and get the blueprint
+  
+  //load the compiled user code
   void *dh = dlopen(lib.c_str(), RTLD_LAZY);
 
   if(dh == nullptr)
@@ -195,6 +200,13 @@ void cc(string src)
     cerr << dlerror() << endl;
     exit(1);
   }
+  return dh;
+}
+
+void bcc(string src)
+{
+  string home = get_home();
+  void *dh = compileSrc(src);
 
   Blueprint (*bpf)();
   bpf = (Blueprint (*)())dlsym(dh, "bp");
@@ -213,15 +225,38 @@ void cc(string src)
   ofs.close();
 }
 
-void save(string bid, string pid)
+void tcc(string source)
 {
   string home = get_home();
-  string ir = fmt::format("{}/.marina/cc/{}.json", home, bid);
+  void *dh = compileSrc(source);
+
+  TestbedTopology (*ttf)();
+  ttf = (TestbedTopology (*)())dlsym(dh, "topo");
+  TestbedTopology tt = ttf();
+  cout << "compiled topology " << tt.name() << endl;
+  cout << "found " << tt.hosts().size() << " hosts" << endl;
+  cout << "found " << tt.switches().size() << " switches" << endl;
+
+  string ir = fmt::format("{}/.marina/cc/{}.json",
+    home,
+    tt.name()
+  );
+
+  ofstream ofs{ir};
+  ofs << tt.json().dump(2);
+  ofs.close();
+
+}
+
+string readSource(string id)
+{
+  string home = get_home();
+  string ir = fmt::format("{}/.marina/cc/{}.json", home, id);
 
   ifstream ifs{ir, std::ios::binary};
   if(!ifs.good())
   {
-    cerr << "could not open find blueprint " << bid << endl;
+    cerr << "could not open find blueprint " << id << endl;
     exit(1);
   }
 
@@ -232,6 +267,12 @@ void save(string bid, string pid)
 
   ir_text.assign(istreambuf_iterator<char>(ifs), istreambuf_iterator<char>());
 
+  return ir_text;
+}
+
+void save(string bid, string pid)
+{
+  string ir_text = readSource(bid);
   Json msg;
   msg["project"] = pid;
   msg["source"] = Json::parse(ir_text);
@@ -302,6 +343,23 @@ void ssh(string mzn, string console)
   cout << __func__ << endl;
 }
 
+void topo(string tid)
+{
+  string src = readSource(tid);
+
+  HttpRequest rq{
+    HTTPMethod::POST,
+    "https://api/materialization/topo",
+    src
+  };
+  auto res = rq.response().get();
+  if(res.msg->getStatusCode() != 200)
+  {
+    cerr << "failed to set testbed topology" << endl;
+    exit(1);
+  }
+}
+
 
 int main(int argc, char **argv)
 {
@@ -318,10 +376,10 @@ int main(int argc, char **argv)
     if(argc != 3) fail();
     mzs(argv[2]);
   }
-  else if(cmd == "cc")
+  else if(cmd == "bcc")
   {
     if(argc != 3) fail();
-    cc(argv[2]);
+    bcc(argv[2]);
   }
   else if(cmd == "save")
   {
@@ -342,6 +400,16 @@ int main(int argc, char **argv)
   {
     if(argc != 4) fail();
     down(argv[2], argv[3]);
+  }
+  else if(cmd == "tcc")
+  {
+    if(argc != 3) fail();
+    tcc(argv[2]);
+  }
+  else if(cmd == "topo")
+  {
+    if(argc != 3) fail();
+    topo(argv[2]);
   }
   else if(cmd == "console")
   {

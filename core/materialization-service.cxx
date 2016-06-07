@@ -26,6 +26,7 @@ http::Response construct(Json);
 http::Response destruct(Json);
 http::Response info(Json);
 http::Response list(Json);
+http::Response topo(Json);
 
 unique_ptr<DB> db{nullptr};
 
@@ -50,6 +51,7 @@ int main()
   srv.onPost("/destruct", jsonIn(destruct));
   srv.onPost("/info", jsonIn(info));
   srv.onPost("/list", jsonIn(list));
+  srv.onPost("/topo", jsonIn(topo));
 
   srv.run();
 }
@@ -252,5 +254,25 @@ http::Response list(Json j)
   }
   //something we did not plan for, but keep the service going none the less
   catch(exception &e) { return unexpectedFailure("list", j, e); }
+}
+
+http::Response topo(Json j)
+{
+  LOG(INFO) << "topo request";
+
+  try
+  {
+    TestbedTopology t = TestbedTopology::fromJson(j);
+    db->setHwTopo(t.json());
+
+    Json r;
+    r["status"] = "ok";
+    r["action"] = "topo";
+
+    return http::Response{ http::Status::OK(), r.dump() };
+  }
+  //something we did not plan for, but keep the service going none the less
+  catch(exception &e) { return unexpectedFailure("topo", j, e); }
+
 }
 

@@ -80,8 +80,9 @@ class LinearIdCacheMap
     Value get(Key key) 
     { 
       lk_.lock();
-      return m_.at(key); 
+      Value v = m_.at(key);
       lk_.unlock();
+      return v;
     }
 
   private:

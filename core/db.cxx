@@ -345,6 +345,13 @@ TestbedTopology DB::fetchHwTopo()
     PQclear(res);
     throw runtime_error{"pq query failure"};
   }
+  if(PQntuples(res) < 1)
+  {
+    string msg{"the testbed does not have a topology!?"};
+    LOG(ERROR) << msg;
+    PQclear(res);
+    throw runtime_error{msg};
+  }
   
   string j{PQgetvalue(res, 0, 0)};
 

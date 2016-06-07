@@ -92,7 +92,6 @@ int main(int argc, char **argv)
   Glog::init("host-control");
   LOG(INFO) << "host-control starting";
 
-  db.reset(new DB{"postgresql://murphy:muffins@db"});
 
   gflags::SetUsageMessage(
       "usage: host-control -pbr_mac <mac> -pbr_addr <addr>");
@@ -107,6 +106,8 @@ int main(int argc, char **argv)
       "/marina/key.pem",
       "" //no password on cert
   );
+  
+  db.reset(new DB{"postgresql://murphy:muffins@db"});
   
   HttpsServer srv("0.0.0.0", 443, sslc);
   
