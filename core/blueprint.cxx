@@ -280,6 +280,7 @@ Blueprint Blueprint::localEmbedding(string host_id)
 {
   Blueprint b{name()};
   b._->id = _->id;
+  b._->project = _->project;
 
   for(Computer c : computers())
   {
@@ -318,6 +319,7 @@ Blueprint Blueprint::clone() const
     string project;
   Blueprint m{name()};
   m._->id = _->id;
+  m._->project = _->project;
   for(auto x : _->networks)
     m._->networks.insert_or_assign(x.first, x.second.clone());
 
