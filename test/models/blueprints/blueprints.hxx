@@ -7,6 +7,7 @@ namespace marina
 {
   //Network blueprints
   Blueprint mars();
+  Blueprint hello_marina();
 }
 
 #endif

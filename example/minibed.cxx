@@ -1,13 +1,11 @@
-#include "topologies.hxx"
-#include "3p/pipes/pipes.hxx"
+#include "marina.hxx"
 
-using std::string;
 using std::to_string;
+using std::string;
 using namespace marina;
 using namespace pipes;
-using namespace std::literals::string_literals;
 
-TestbedTopology marina::minibed()
+TOPOLOGY
 {
   TestbedTopology t{"minibed"};
 

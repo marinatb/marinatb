@@ -15,6 +15,7 @@ using std::array;
 using std::set_difference;
 using std::inserter;
 using std::unordered_map;
+using std::remove_if;
 using namespace marina;
 using namespace pipes;
 
@@ -189,10 +190,11 @@ namespace marina {
     Switch_(string name) : name{name} {} 
 
     string name;
-    Bandwidth backplane, 
-              allocated_backplane{0_gbps};
+    Bandwidth backplane;
+              //allocated_backplane{0_gbps};
 
     vector<Host> connected_hosts;
+    vector<Network> networks;
   };
 
   struct Host_
@@ -203,7 +205,7 @@ namespace marina {
     }
 
     Computer host_comp;
-    vector<Computer> experiment_machines;
+    vector<Computer> machines;
   };
 
 }
@@ -395,6 +397,25 @@ Switch & Switch::name(string name)
   return *this;
 }
 
+vector<Network> & Switch::networks() const
+{
+  return _->networks;
+}
+
+void Switch::removeNetwork(std::string guid)
+{
+  _->networks.erase(
+    remove_if(_->networks.begin(), _->networks.end(),
+      [guid](const Network & n)
+      {
+        return n.guid() == guid;
+      }
+    ),
+    _->networks.end()
+  );
+}
+
+
 std::vector<Host> & Switch::connectedHosts() const
 {
   return _->connected_hosts;
@@ -407,24 +428,40 @@ Switch & Switch::backplane(Bandwidth b)
   return *this;
 }
 
-Bandwidth Switch::allocatedBackplane() const { return _->allocated_backplane; }
-Switch & Switch::allocatedBackplane(Bandwidth b)
-{
-  _->allocated_backplane = b;
-  return *this;
+Bandwidth Switch::allocatedBackplane() const 
+{ 
+  size_t x{0};
+  for(const Network & n : _->networks)
+  {
+    x += n.capacity().megabits();
+  }
+  return Bandwidth{x, Bandwidth::Unit::MBPS};
 }
+
+//Switch & Switch::allocatedBackplane(Bandwidth b)
+//{
+//  _->allocated_backplane = b;
+//  return *this;
+//}
 
 Switch Switch::fromJson(Json j)
 {
-  string name = j.at("name");
+  string name = extract(j, "name", "switch");
   Switch s{name};
-  s.backplane(Bandwidth::fromJson(j.at("backplane")));
-  s.allocatedBackplane(Bandwidth::fromJson(j.at("allocated-backplane")));
+  s.backplane(Bandwidth::fromJson(extract(j, "backplane", "switch")));
+  //s.allocatedBackplane(
+  //    Bandwidth::fromJson(extract(j, "allocated-backplane", "switch")));
   
-  Json chs = j.at("connected-hosts");
+  Json chs = extract(j, "connected-hosts", "switch");
   for(const Json & hj : chs)
   {
     s.connectedHosts().push_back(Host::fromJson(hj));
+  }
+
+  Json njs = extract(j, "networks", "switch");
+  for(const Json & n : njs)
+  {
+    s._->networks.push_back(Network::fromJson(n));
   }
 
   return s;
@@ -437,6 +474,7 @@ Json Switch::json() const
   j["backplane"] = backplane().json();
   j["allocated-backplane"] = allocatedBackplane().json();
   j["connected-hosts"] = jtransform(connectedHosts());
+  j["networks"] = jtransform(_->networks);
 
   return j;
 }
@@ -445,8 +483,9 @@ Switch Switch::clone() const
 {
   Switch s{_->name};
   s._->backplane = _->backplane;
-  s._->allocated_backplane = _->allocated_backplane;
   s._->connected_hosts = _->connected_hosts 
+    | map([](auto x){ return x.clone(); });
+  s._->networks = _->networks
     | map([](auto x){ return x.clone(); });
 
   return s;
@@ -581,6 +620,7 @@ Host & Host::cores(size_t n)
   return *this;
 }
 
+/*
 const Interface Host::ifx() const
 {
   return _->host_comp.ifx("ifx");
@@ -596,58 +636,98 @@ Host & Host::ifx(Bandwidth b)
   _->host_comp.ifx("ifx").capacity(b);
   return *this;
 }
+*/
+
+Interface Host::ifx(string name)
+{
+  return _->host_comp.ifx(name);
+}
+
+Host & Host::add_ifx(string name, Bandwidth bw)
+{
+  _->host_comp.add_ifx(name, bw, 0_ms);
+  return *this;
+}
+
+Host & Host::remove_ifx(string name)
+{
+  _->host_comp.remove_ifx(name);
+  return *this;
+}
+
+unordered_map<string, Interface> & Host::interfaces() const
+{
+  return _->host_comp.interfaces();
+}
+
 
 LoadVector Host::loadv() const
 {
   LoadVector v;
   v.proc.total = cores();
-  v.proc.used = experimentMachines()
+  v.proc.used = machines()
     | map([](auto x){ return x.cores(); }) 
     | reduce(plus);
 
   v.mem.total = memory().bytes();
-  v.mem.used = experimentMachines()
+  v.mem.used = machines()
     | map([](auto x){ return x.memory().bytes(); })
     | reduce(plus);
 
   v.disk.total = disk().megabytes();
-  v.mem.used = experimentMachines()
+  v.mem.used = machines()
     | map([](auto x){ return x.disk().bytes(); })
     | reduce(plus);
 
-  v.net.total = ifx().capacity().megabits();
-  v.net.used = experimentMachines()
+  for(const auto & x : interfaces())
+    v.net.total += x.second.capacity().megabits();
+
+  //v.net.total = ifx().capacity().megabits();
+  v.net.used = machines()
     | map([](auto x){ return x.hwspec().net; })
     | reduce(plus);
 
   return v;
 }
 
-vector<Computer> & Host::experimentMachines() const 
+vector<Computer> & Host::machines() const 
 { 
-  return _->experiment_machines; 
+  return _->machines; 
+}
+
+void Host::removeMachine(string cifx_mac)
+{
+  _->machines.erase(
+    remove_if(_->machines.begin(), _->machines.end(),
+      [cifx_mac](const Computer & c)
+      {
+        return c.interfaces().at("cifx").mac() == cifx_mac;
+      }
+    ),
+    _->machines.end()
+  );
 }
 
 Host Host::fromJson(Json j)
 {
-  string name = j.at("name");
+  string name = extract(j, "name", "host");
   Host h{name};
   
-  h.cores(j.at("cores"))
-   .memory(Memory::fromJson(j.at("memory")))
-   .disk(Memory::fromJson(j.at("disk")));
+  h.cores(extract(j, "cores", "host"))
+   .memory(Memory::fromJson(extract(j,"memory", "host")))
+   .disk(Memory::fromJson(extract(j, "disk", "host")));
 
-  Json ifxs = j.at("interfaces");
+  Json ifxs = extract(j, "interfaces", "host");
   for(const Json & ij : ifxs)
   {
     Interface ifx = Interface::fromJson(ij);
     h.interfaces().insert_or_assign(ifx.name(), ifx);
   }
 
-  Json xpns = j.at("experiment-nodes");
+  Json xpns = extract(j, "machines", "host");
   for(const Json & xj : xpns)
   {
-    h.experimentMachines().push_back(Computer::fromJson(xj));
+    h.machines().push_back(Computer::fromJson(xj));
   }
 
   return h;
@@ -660,7 +740,7 @@ Json Host::json() const
   j["cores"] = cores();
   j["memory"] = memory().json();
   j["disk"] = disk().json();
-  j["experiment-nodes"] = jtransform(_->experiment_machines);
+  j["machines"] = jtransform(_->machines);
   j["interfaces"] = jtransform(interfaces());
   return j;
 }
@@ -669,31 +749,10 @@ Host Host::clone() const
 {
   Host h{name()};
   h._->host_comp = _->host_comp.clone();
-  for(auto & c : _->experiment_machines)
+  for(auto & c : _->machines)
   { 
-    h._->experiment_machines.push_back(c.clone()); 
+    h._->machines.push_back(c.clone()); 
   }
   return h;
 }
 
-// Embedding -------------------------------------------------------------------
-Embedding::Embedding(string h, bool a)
-  : host{h},
-    assigned{a}
-{}
-
-Embedding Embedding::fromJson(Json j)
-{
-  string host = j.at("host");
-  bool assigned = j.at("assigned");
-  return Embedding{host, assigned};
-}
-
-Json Embedding::json()
-{
-  Json j;
-  j["host"] = host;
-  j["assigned"] = assigned;
-
-  return j;
-}

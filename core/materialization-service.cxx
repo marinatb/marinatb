@@ -11,6 +11,7 @@
 
 using std::string;
 using std::unique_ptr;
+using std::unordered_set;
 using std::future;
 using std::vector;
 using std::exception;
@@ -25,6 +26,7 @@ http::Response construct(Json);
 http::Response destruct(Json);
 http::Response info(Json);
 http::Response list(Json);
+http::Response topo(Json);
 
 unique_ptr<DB> db{nullptr};
 
@@ -49,6 +51,7 @@ int main()
   srv.onPost("/destruct", jsonIn(destruct));
   srv.onPost("/info", jsonIn(info));
   srv.onPost("/list", jsonIn(list));
+  srv.onPost("/topo", jsonIn(topo));
 
   srv.run();
 }
@@ -64,7 +67,7 @@ http::Response construct(Json j)
     project = j.at("project");
     bpid = j.at("bpid");
   }
-  catch(out_of_range &) { return badRequest("save", j); }
+  catch(out_of_range &e) { return badRequest("save", j, e); }
 
   //try to perform the materialization
   try
@@ -79,25 +82,54 @@ http::Response construct(Json j)
     // of topo that bas bp emedded inside
     auto embedding = embed(bp, topo);
 
+    //TODO vxlan.vni: this is a centralized database attribute for now
+    //however in the future this should be a distributed agreement variable
+    //among the host-controllers because at this level we really shouldn't
+    //care about such a materialization implementation detail. Maybehapps
+    //this could be a place to use riak/redis/memcached @ the host-controller 
+    //level
+    for(Network & n : bp.networks())
+    {
+      //setup vxlan virtual network identifier
+      n.einfo().vni = db->newVxlanVni(n.guid());
+
+      //set interface ip addresses
+      IpV4Address a = n.ipv4();
+      for(const Neighbor & nbr : n.connections())
+      {
+        if(nbr.kind != Neighbor::Kind::Computer) continue;
+        if(a.netZero()) a++;
+
+        bp.getComputerByMac(nbr.id)
+          .getInterfaceByMac(nbr.id)
+          .einfo()
+          .ipaddr_v4 = a;
+
+        a++;
+      }
+    }
+
     //call out to all of the selected materialization hosts asking them to 
     //materialize their portion of the blueprint
-    /*
     vector<future<http::Message>> replys;
-    for(const Computer & c : bp.computers())
+
+    //TODO: need to get a subset of hosts specific to this blueprint
+    //as it is now all hosts will get embedding commands
+    for(const Host & h : embedding.hosts())
     {
-      string host = c.embedding().host;
+      Blueprint lbp = bp.localEmbedding(h.name());
 
       replys.push_back(
         HttpRequest
         {
           HTTPMethod::POST,
-          "https://"+host+"/materialize",
-          c.json().dump()
+          "https://"+h.name()+"/construct",
+          //rq.dump()
+          lbp.json().dump()
         }
         .response()
       );
     }
-    */
 
     // save the embedding to the database
     db->saveMaterialization(project, bpid, bp.json());
@@ -119,13 +151,13 @@ http::Response info(Json j)
     project = j.at("project");
     bpid = j.at("bpid");
   }
-  catch(out_of_range &) { return badRequest("save", j); }
+  catch(out_of_range &e) { return badRequest("save", j, e); }
 
   //get the materialization info
   try
   {
-    Json mzn = db->fetchMaterialization(project, bpid);
-    return http::Response{ http::Status::OK(), mzn.dump() };
+    Blueprint mzn = db->fetchMaterialization(project, bpid);
+    return http::Response{ http::Status::OK(), mzn.json().dump() };
   }
   catch(exception &e) { return unexpectedFailure("construct", j, e); }
 
@@ -143,11 +175,50 @@ http::Response destruct(Json j)
     project = j.at("project").get<string>();
     bpid = j.at("bpid").get<string>();
   }
-  catch(out_of_range &) { return badRequest("del", j); }
+  catch(out_of_range &e) { return badRequest("del", j, e); }
 
   try
   {
+    Blueprint bp = db->fetchMaterialization(project, bpid);
+    TestbedTopology topo = db->fetchHwTopo();
+    
+    //compute the set of hosts containing computers in this blueprint
+    unordered_set<string> hosts;
+    for(const Computer & c : bp.computers()) 
+    {
+      hosts.insert(c.embedding().host);
+    }
+
+    //TODO the embedding model should probably contain some information
+    //about the networks, when it does this will be the place to get
+    //rid of it
+    /*
+    for(const Network & n : bp.networks())
+    {
+
+    }*/
+   
+    //async command to remove computers and networks from relevant hosts
+    vector<future<http::Message>> replys;
+    for(const string & h : hosts)
+    {
+      LOG(INFO) << "destructing " << bp.name() << " on " << h;
+      Blueprint lbp = bp.localEmbedding(h);  
+      replys.push_back(
+        HttpRequest
+        {
+          HTTPMethod::POST,
+          "https://"+h+"/destruct",
+          lbp.json().dump()
+        }
+        .response()
+      );
+    }
+
+    TestbedTopology topo_ = unembed(bp, topo);
+
     db->deleteMaterialization(project, bpid);
+    db->setHwTopo(topo_.json());
 
     Json r;
     r["project"] = project;
@@ -160,8 +231,49 @@ http::Response destruct(Json j)
   catch(exception &e) { return unexpectedFailure("del", j, e); }
 }
 
-http::Response list(Json)
+http::Response list(Json j)
 {
-  return http::Response{ http::Status::OK(), not_implemented };
+  LOG(INFO) << "list request";
+
+  //extract request parameters
+  string project;
+  try
+  {
+    project = j.at("project");
+  }
+  catch(out_of_range &e) { return badRequest("list", j, e); }
+
+  try
+  {
+    auto bps = db->fetchMaterializations(project);
+
+    Json r;
+    r["status"] = "ok";
+    r["materializations"] = jtransform(bps);
+
+    return http::Response{ http::Status::OK(), r.dump() };
+  }
+  //something we did not plan for, but keep the service going none the less
+  catch(exception &e) { return unexpectedFailure("list", j, e); }
+}
+
+http::Response topo(Json j)
+{
+  LOG(INFO) << "topo request";
+
+  try
+  {
+    TestbedTopology t = TestbedTopology::fromJson(j);
+    db->setHwTopo(t.json());
+
+    Json r;
+    r["status"] = "ok";
+    r["action"] = "topo";
+
+    return http::Response{ http::Status::OK(), r.dump() };
+  }
+  //something we did not plan for, but keep the service going none the less
+  catch(exception &e) { return unexpectedFailure("topo", j, e); }
+
 }
 

@@ -98,6 +98,9 @@ namespace marina {
       Switch(std::string);
       static Switch fromJson(Json);
 
+      std::vector<Network> & networks() const;
+      void removeNetwork(std::string guid);
+
       //name
       std::string name() const;
       Switch & name(std::string);
@@ -110,10 +113,11 @@ namespace marina {
 
       //allocated backplane
       Bandwidth allocatedBackplane() const;
-      Switch & allocatedBackplane(Bandwidth);
+      //Switch & allocatedBackplane(Bandwidth);
 
       Json json() const;
       Switch clone() const;
+
     private:
       friend TestbedTopology;
       void connect(Host, Switch, Bandwidth);
@@ -159,7 +163,8 @@ namespace marina {
       static Host fromJson(Json);
 
       //TODO the const here is a bit disingenuous
-      std::vector<Computer> & experimentMachines() const;
+      std::vector<Computer> & machines() const;
+      void removeMachine(std::string cifx_mac);
       
       //name
       std::string name() const;
@@ -177,9 +182,10 @@ namespace marina {
       const Memory disk() const;
       Host & disk(Memory);
 
-      //network interface
-      const Interface ifx() const;
-      Host & ifx(Bandwidth);
+      //network interfaces
+      Interface ifx(std::string);
+      Host & add_ifx(std::string, Bandwidth);
+      Host & remove_ifx(std::string);
 
       //TODO the const here is a bit disingenuous
       std::unordered_map<std::string, Interface> & interfaces() const; 
@@ -189,6 +195,7 @@ namespace marina {
 
       Json json() const;
       Host clone() const;
+
     private:
       std::shared_ptr<struct Host_> _;
   };
@@ -199,16 +206,31 @@ namespace marina {
   bool operator== (const Host & a, const Host & b);
   bool operator!= (const Host & a, const Host & b);
   
-  struct Embedding
+  /*
+  struct MachineEmbedding
   {
-    Embedding() = default;
-    Embedding(std::string host, bool assigned);
-    static Embedding fromJson(Json);
+    MachineEmbedding() = default;
+    MachineEmbedding(std::string host, bool assigned);
+
+    static MachineEmbedding fromJson(Json);
     std::string host{"goblin"};
     bool assigned{false};
 
     Json json();
   };
+
+  struct NetEmbedding
+  {
+    NetEmbedding() = default;
+    NetEmbedding(std::unordered_set<std::string> switches, bool assigned);
+
+    std::unordered_set<std::string> switches;
+    bool assigned{false};
+
+    static NetEmbedding fromJson(Json);
+    Json json();
+  };
+  */
 
 }
 

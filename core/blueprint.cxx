@@ -2,13 +2,14 @@
 #include <iostream>
 #include <unordered_map>
 #include <limits>
-#include <array>
 #include <vector>
 #include <algorithm>
-#include "blueprint.hxx"
-#include "util.hxx"
+#include <fmt/format.h>
+#include <arpa/inet.h>
 #include "3p/pipes/pipes.hxx"
-#include "topo.hxx"
+#include "core/blueprint.hxx"
+#include "core/util.hxx"
+#include "core/topo.hxx"
 
 using std::runtime_error;
 using std::out_of_range;
@@ -20,6 +21,8 @@ using std::vector;
 using std::to_string;
 using std::pair;
 using std::sort;
+using std::find_if;
+using std::ostream;
 
 using namespace marina;
 using namespace pipes;
@@ -29,22 +32,15 @@ using ull = unsigned long long;
 // internal data structures ----------------------------------------------------
 namespace marina
 {
-  struct Link
-  {
-    Link() = default;
-    Link(Interface, Interface);
-    static Link fromJson(Json);
-
-    Json json() const;
-    
-    array<string, 2> endpoints;
-  };
 
   struct Blueprint_
   {
-    Blueprint_(string name) : name{name} {}
+    Blueprint_(string name) 
+      : name{name},
+        id{generate_guid()}
+    {}
 
-    string name;
+    string name, id, project;
     unordered_map<string, Network> networks;
     unordered_map<string, Computer> computers;
     vector<Link> links;
@@ -57,7 +53,11 @@ namespace marina
     string name;
     Bandwidth bandwidth{100_mbps};
     Latency latency{0_ms};
-    unordered_map<string, Interface> interfaces;
+    IpV4Address ipv4space{"10.10.0.0", 16};
+    //unordered_map<string, Interface> interfaces;
+    string guid =  generate_mac();
+    vector<Neighbor> connections;
+    Network::EmbeddingInfo einfo;
   };
 
   struct Computer_
@@ -68,7 +68,7 @@ namespace marina
     string os{"ubuntu-server-15.10"};
     Memory memory{4_gb}, disk{10_gb};
     size_t cores{2};
-    Embedding embedding;
+    Computer::EmbeddingInfo embedding;
 
     unordered_map<string, Interface> interfaces;
   };
@@ -78,11 +78,12 @@ namespace marina
     Interface_(string name) 
       : name{name} 
     {
-      mac_address = generate_mac();
+      mac = generate_mac();
     }
 
-    string name, mac_address;
+    string name, mac;
     Latency latency{0_ms};
+    Interface::EmbeddingInfo einfo;
     Bandwidth capacity{1_gbps};
   };
 
@@ -99,6 +100,15 @@ Blueprint & Blueprint::name(string name)
   _->name = name;
   return *this;
 }
+
+string Blueprint::project() const { return _->project; }
+Blueprint & Blueprint::project(string project)
+{
+  _->project = project;
+  return *this;
+}
+
+string Blueprint::id() const { return _->id; }
 
 Network Blueprint::network(string name) 
 { 
@@ -126,6 +136,59 @@ vector<Network> Blueprint::networks() const
   return ns;
 }
 
+
+vector<Network> Blueprint::connectedNetworks(const Computer c)
+{
+  vector<Network> result;
+  for(const auto & p : c.interfaces())
+  {
+    const Interface & i = p.second;
+    for(const Link & l : _->links)
+    {
+      if(l.endpoints[0] == i.mac())
+      {
+        Network n = getNetworkById(l.endpoints[1]);
+        //TODO gross make this a set
+        if(find_if(result.begin(), result.end(), [&n](const Network & x){
+              return n.name() == x.name();
+              }) == result.end())
+        {
+          result.push_back(n); 
+        }
+      }
+      if(l.endpoints[1] == i.mac())
+      {
+        Network n = getNetworkById(l.endpoints[0]);
+        if(find_if(result.begin(), result.end(), [&n](const Network & x){
+              return n.name() == x.name();
+              }) == result.end())
+        {
+          result.push_back(n); 
+        }
+      }
+    }
+  }
+  return result;
+}
+     
+/*
+vector<Computer> Blueprint::connectedComputers(const Network n)
+{
+  vector<Computer> result;
+
+  for(const Link & l : _->links)
+  {
+    if(l.endpoints[0] == n.guid())
+    {
+      Computer c = getComputerByMac(l.endpoints[1]);
+
+    }
+  }
+
+  return result;
+}
+*/
+
 Computer & Blueprint::getComputer(string name) const 
 { 
   return _->computers.at(name); 
@@ -134,6 +197,30 @@ Computer & Blueprint::getComputer(string name) const
 Network & Blueprint::getNetwork(string name) const 
 { 
   return _->networks.at(name); 
+}
+
+Network Blueprint::getNetworkById(string guid) const
+{
+  for(Network n : networks())
+  {
+    if(n.guid() == guid) return n;
+  }
+  throw out_of_range{"network with id " + guid + " not found"};
+}
+
+Computer Blueprint::getComputerByMac(string mac) const
+{
+  for(Computer c : computers())
+  {
+    for(const auto & i : c.interfaces())
+    {
+      if(i.second.mac() == mac)
+      {
+        return c;
+      }
+    }
+  }
+  throw out_of_range{"computer with mac " + mac + " not found"};
 }
 
 void Blueprint::removeComputer(string name)
@@ -147,29 +234,92 @@ void Blueprint::removeNetwork(string name)
 }
 
 
-Json Blueprint::json() const
+const vector<Link> & Blueprint::links() const
 {
-  Json j;
-  j["name"] = name();
-  j["networks"] = jtransform(_->networks);
-  j["computers"] = jtransform(_->computers);
-  j["links"] = jtransform(_->links);
-  return j;
+  return _->links;
 }
 
 void Blueprint::connect(Interface i, Network n)
 {
-  _->links.push_back({i, n.add_ifx()});
+  //_->links.push_back({i, n.add_ifx()});
+  _->links.push_back({i.mac(), n.guid()});
+
+  n._->connections.push_back(
+    Neighbor{
+      Neighbor::Kind::Computer,
+      i.mac()//,
+      //*this
+    }
+  );
 }
 
 void Blueprint::connect(Network a, Network b)
 {
-  _->links.push_back({a.add_ifx(), b.add_ifx()});
+  //_->links.push_back({a.add_ifx(), b.add_ifx()});
+  _->links.push_back({a.guid(), b.guid()});
+
+  a._->connections.push_back(
+    Neighbor{
+      Neighbor::Kind::Network,
+      b.guid()//,
+     // *this
+    }
+  );
+  
+  b._->connections.push_back(
+    Neighbor{
+      Neighbor::Kind::Network,
+      a.guid()//,
+    //  *this
+    }
+  );
+
+}
+
+Blueprint Blueprint::localEmbedding(string host_id)
+{
+  Blueprint b{name()};
+  b._->id = _->id;
+  b._->project = _->project;
+
+  for(Computer c : computers())
+  {
+    if(c.embedding().host == host_id)
+    {
+      b._->computers.insert_or_assign(c.name(), c);
+
+      for(auto i : c.interfaces())
+      {
+        for(const Link & l : _->links)
+        {
+          if(l.endpoints[0] == i.second.mac())
+          {
+            b._->links.push_back(l);
+
+            Network n = getNetworkById(l.endpoints[1]);
+            b._->networks.insert_or_assign(n.name(), n);
+          }
+          if(l.endpoints[1] == i.second.mac())
+          {
+            b._->links.push_back(l);
+
+            Network n = getNetworkById(l.endpoints[0]);
+            b._->networks.insert_or_assign(n.name(), n);
+          }
+        }
+      }
+    }
+  }
+
+  return b;
 }
 
 Blueprint Blueprint::clone() const
 {
+    string project;
   Blueprint m{name()};
+  m._->id = _->id;
+  m._->project = _->project;
   for(auto x : _->networks)
     m._->networks.insert_or_assign(x.first, x.second.clone());
 
@@ -180,19 +330,24 @@ Blueprint Blueprint::clone() const
   return m;
 }
 
-auto extract(Json j, string tag, string context)
+Json Blueprint::json() const
 {
-  try { return j.at(tag); }
-  catch(...) 
-  { 
-    throw out_of_range{"error extracting " + context+":"+tag};
-  }
+  Json j;
+  j["name"] = name();
+  j["project"] = project();
+  j["networks"] = jtransform(_->networks);
+  j["computers"] = jtransform(_->computers);
+  j["links"] = jtransform(_->links);
+  j["id"] = _->id;
+  return j;
 }
 
 Blueprint Blueprint::fromJson(Json j)
 {
   string name = extract(j, "name", "blueprint");
   Blueprint bp{name};
+  bp._->project = extract(j, "project", "blueprint");
+  bp._->id = extract(j, "id", "blueprint");
 
   Json computers = extract(j, "computers", "blueprint");
   for(Json & cj : computers)
@@ -259,6 +414,40 @@ bool marina::operator!= (const Blueprint &a, const Blueprint &b)
 {
   return !(a == b);
 }
+
+//Neighbor ---------------------------------------------------------------------
+Neighbor::Neighbor(Kind k, std::string id/*, Blueprint bp*/) 
+  : kind{k}, 
+    id{id}//,
+    //bp{bp}
+{}
+
+Neighbor Neighbor::fromJson(Json j)
+{
+  string kind = extract(j, "kind", "neighbor");
+  string id = extract(j, "id", "neighbor");
+
+  Kind kind_;
+  if(kind == "Network") kind_ = Kind::Network;
+  else if(kind == "Computer") kind_ = Kind::Computer;
+  else throw runtime_error{fmt::format("unknown neighbor kind '{}'", kind)};
+
+  return Neighbor{kind_, id};
+}
+
+Json Neighbor::json() const
+{
+  Json j;
+  switch(kind)
+  {
+    case Kind::Network: j["kind"] = "Network";
+    case Kind::Computer: j["kind"] = "Computer";
+  }
+  j["id"] = id;
+
+  return j;
+}
+
 
 // Bandwidth -------------------------------------------------------------------
 Bandwidth::Bandwidth(size_t size, Unit unit)
@@ -389,28 +578,93 @@ bool marina::operator != (const Latency &a, const Latency &b)
   return !(a == b);
 }
 
+// IpV4Address -----------------------------------------------------------------
+
+IpV4Address::IpV4Address(const string & addr, uint32_t mask)
+  : mask_{mask}
+{
+  int err = inet_pton(AF_INET, addr.c_str(), &addr_);
+  if(err != 1) throw runtime_error{"bad ipv4 address"};
+}
+
+string IpV4Address::addrStr() const
+{
+  char buf[INET_ADDRSTRLEN];
+  inet_ntop(AF_INET, &addr_, buf, INET_ADDRSTRLEN);
+  return string{buf};
+}
+
+string IpV4Address::cidr() const
+{
+  return fmt::format("{}/{}", addrStr(), mask_);
+}
+
+uint32_t IpV4Address::addr() const { return addr_; }
+uint32_t IpV4Address::mask() const { return mask_; }
+
+IpV4Address & IpV4Address::operator++(int)
+{
+  addr_ = htonl(ntohl(addr_) + 1);
+  return *this;
+}
+
+IpV4Address & IpV4Address::operator--(int)
+{
+  addr_ = htonl(ntohl(addr_) - 1);
+  return *this;
+}
+
+bool IpV4Address::netZero() const
+{
+  return ntohl(addr_) % 256 == 0;
+}
+  
+ostream & marina::operator<<(ostream & o, const IpV4Address & a)
+{
+  o << a.cidr(); 
+  return o;
+}
+
+IpV4Address marina::operator+(IpV4Address a, uint32_t x)
+{
+  IpV4Address b = a;
+  b.addr_ = htonl(ntohl(a.addr_) + x);
+  return b;
+}
+
+IpV4Address marina::operator-(IpV4Address a, uint32_t x)
+{
+  IpV4Address b = a;
+  b.addr_ = htonl(ntohl(a.addr_) - x);
+  return b;
+}
+
+IpV4Address IpV4Address::fromJson(Json j)
+{
+  uint64_t addr = extract(j, "addr", "ipv4address"),
+           mask = extract(j, "mask", "ipv4address");
+
+  IpV4Address a;
+  a.addr_ = addr;
+  a.mask_ = mask;
+
+  return a;
+}
+
+Json IpV4Address::json() const
+{
+  Json j;
+
+  j["addr"] = addr_;
+  j["mask"] = mask_;
+
+  return j;
+}
 
 // Network ---------------------------------------------------------------------
 Network::Network(string name)
   : _{new Network_{name}}
 { }
-
-Network Network::fromJson(Json j)
-{
-  string name = extract(j, "name", "network");
-  Network n{name};
-  n.latency(Latency::fromJson(extract(j, "latency", "network")));
-  n.capacity(Bandwidth::fromJson(extract(j, "capacity", "network")));
-  
-  Json ifxs = extract(j, "interfaces", "network");
-  for(const Json & ij : ifxs)
-  {
-    Interface ifx = Interface::fromJson(ij);
-    n._->interfaces.insert_or_assign(ifx.name(), ifx);
-  }
-
-  return n;
-}
 
 string Network::name() const { return _->name; }
 Network & Network::name(string name)
@@ -426,6 +680,18 @@ Network & Network::capacity(Bandwidth x)
   return *this;
 }
 
+
+const IpV4Address & Network::ipv4() const
+{
+  return _->ipv4space;
+}
+
+Network & Network::ipv4(string addr, uint32_t mask)
+{
+  _->ipv4space = IpV4Address{addr, mask};
+  return *this;
+}
+
 const Latency Network::latency() const { return _->latency; }
 Network & Network::latency(Latency x)
 {
@@ -433,20 +699,50 @@ Network & Network::latency(Latency x)
   return *this;
 }
 
-Interface Network::add_ifx()
+string Network::guid() const
 {
-  string name = "ifx" + to_string(_->interfaces.size());
-
-  return 
-  _->interfaces
-    .emplace( make_pair(name, name) ).first->second
-      .latency(0_ms)
-      .capacity(capacity());
+  return _->guid;
 }
 
-unordered_map<string, Interface> & Network::interfaces() const
+const vector<Neighbor> & Network::connections() const
 {
-  return _->interfaces;
+  return _->connections;
+}
+
+Network::EmbeddingInfo & Network::einfo() const
+{
+  return _->einfo;
+}
+
+Network Network::fromJson(Json j)
+{
+  string name = extract(j, "name", "network");
+  Network n{name};
+  n.latency(Latency::fromJson(extract(j, "latency", "network")));
+  n.capacity(Bandwidth::fromJson(extract(j, "capacity", "network")));
+
+  Json cnxs = extract(j, "connections", "network");
+  for(const Json & cnx : cnxs)
+  {
+    Neighbor nbr = Neighbor::fromJson(cnx);
+    n._->connections.push_back(nbr);
+  }
+
+  n._->guid = extract(j, "guid", "network");
+
+  Json ipv4_ = extract(j, "ipv4", "network");
+  n._->ipv4space = IpV4Address::fromJson(ipv4_);
+
+  Json einfo = extract(j, "einfo", "network");
+  n._->einfo.vni = extract(einfo, "vni", "einfo");
+  Json switches = extract(einfo, "switches", "network:einfo");
+  for(const Json & sw : switches)
+  {
+    string s = sw;
+    n._->einfo.switches.insert(s);
+  }
+
+  return n;
 }
 
 Json Network::json() const
@@ -455,7 +751,11 @@ Json Network::json() const
   j["name"] = name();
   j["latency"] = latency().json();
   j["capacity"] = capacity().json();
-  j["interfaces"] = jtransform(_->interfaces);
+  j["connections"] = jtransform(_->connections);
+  j["ipv4"] = ipv4().json();
+  j["guid"] = _->guid;
+  j["einfo"]["vni"] = _->einfo.vni;
+  j["einfo"]["switches"] = _->einfo.switches;
   return j;
 }
 
@@ -464,8 +764,8 @@ Network Network::clone() const
   Network n{name()};
   n._->latency = _->latency;
   n._->bandwidth = _->bandwidth;
-  for(auto x : _->interfaces)
-    n._->interfaces.insert_or_assign(x.first, x.second.clone());
+  n._->guid = _->guid;
+  n._->einfo = _->einfo;
   return n;
 }
   
@@ -474,13 +774,7 @@ bool marina::operator == (const Network &a, const Network &b)
   if(a.name() != b.name()) return false;
   if(a.capacity() != b.capacity()) return false;
   if(a.latency() != b.latency()) return false;
-  
-  for(auto p : a.interfaces())
-  {
-    auto i = b.interfaces().find(p.first);
-    if(i == b.interfaces().end()) return false;
-    if(p.second != i->second) return false;
-  }
+  if(a.guid() != b.guid()) return false;
   
   return true;
 }
@@ -608,7 +902,11 @@ Interface Interface::fromJson(Json j)
   ifx.latency(Latency::fromJson(extract(j, "latency", "interface")))
      .capacity(Bandwidth::fromJson(extract(j, "capacity", "interface")));
 
-  ifx._->mac_address = extract(j, "mac", "interface");
+  ifx._->mac = extract(j, "mac", "interface");
+  
+  Json einfo = extract(j, "einfo", "interface");
+  Json ipaddr_v4 = extract(einfo, "ipv4", "interface:einfo");
+  ifx.einfo().ipaddr_v4 = IpV4Address::fromJson(ipaddr_v4);
 
   return ifx;
 }
@@ -636,7 +934,12 @@ Interface & Interface::capacity(Bandwidth x)
 
 string Interface::mac() const
 {
-  return _->mac_address;
+  return _->mac;
+}
+
+Interface::EmbeddingInfo & Interface::einfo() const
+{
+  return _->einfo;
 }
 
 Json Interface::json() const
@@ -646,13 +949,14 @@ Json Interface::json() const
   j["latency"] = latency().json();
   j["capacity"] = capacity().json();
   j["mac"] = mac();
+  j["einfo"]["ipv4"] = einfo().ipaddr_v4.json();
   return j;
 }
 
 Interface Interface::clone() const
 {
   Interface i{name()};
-  i._->mac_address = _->mac_address;
+  i._->mac = _->mac;
   i._->latency = _->latency;
   i._->capacity = _->capacity;
   return i;
@@ -716,7 +1020,9 @@ HwSpec marina::operator- (HwSpec a, HwSpec b)
 // Computer --------------------------------------------------------------------
 Computer::Computer(string name)
   : _{new Computer_{name}}
-{}
+{
+  add_ifx("cifx", 1_gbps);
+}
 
 Computer Computer::fromJson(Json j)
 {
@@ -725,7 +1031,8 @@ Computer Computer::fromJson(Json j)
   c.os(extract(j, "os", "computer"));
   c.memory(Memory::fromJson(extract(j, "memory", "computer")));
   c.cores(extract(j, "cores", "computer"));
-  c.embedding(Embedding::fromJson(extract(j, "embedding", "computer")));
+  c.embedding(Computer::EmbeddingInfo::fromJson(
+        extract(j, "embedding", "computer")));
 
   Json ifxs = extract(j, "interfaces", "computer");
   for(const Json & ij : ifxs)
@@ -798,8 +1105,8 @@ Computer & Computer::remove_ifx(string name)
   return *this;
 }
 
-Embedding Computer::embedding() const { return _->embedding; }
-Computer & Computer::embedding(Embedding e)
+Computer::EmbeddingInfo & Computer::embedding() const { return _->embedding; }
+Computer & Computer::embedding(Computer::EmbeddingInfo e)
 {
   _->embedding = e;
   return *this;
@@ -852,6 +1159,23 @@ unordered_map<string, Interface> & Computer::interfaces() const
   return _->interfaces; 
 }
 
+Interface Computer::getInterfaceByMac(string m) const
+{
+  auto i = 
+    find_if(_->interfaces.begin(), _->interfaces.end(),
+      [m](const auto p){ return p.second.mac() == m; }
+    );
+
+  if(i == _->interfaces.end()) 
+    throw runtime_error{
+      fmt::format("computer {} does not contain interface {}",
+          name(), m)
+    };
+
+  return i->second;
+}
+  
+
 bool marina::operator== (const Computer & a, const Computer & b)
 {
   if(a.name() != b.name()) return false;
@@ -875,9 +1199,61 @@ bool marina::operator!= (const Computer & a, const Computer & b)
   return !(a == b);
 }
 
+bool marina::isLinux(const Computer &)
+{
+  return true;
+}
+
+Computer::EmbeddingInfo::EmbeddingInfo(string h, bool a)
+  : host{h},
+    assigned{a}
+{}
+
+Computer::EmbeddingInfo Computer::EmbeddingInfo::fromJson(Json j)
+{
+  string host = j.at("host");
+  bool assigned = j.at("assigned");
+  
+  Computer::EmbeddingInfo ei{host, assigned};
+
+  string ls = extract(j, "launch-state", "computer:embeddinginfo");
+  if(ls == "None") ei.launch_state = LaunchState::None;
+  else if(ls == "Queued") ei.launch_state = LaunchState::Queued;
+  else if(ls == "Launching") ei.launch_state = LaunchState::Launching;
+  else if(ls == "Up") ei.launch_state = LaunchState::Up;
+  else throw runtime_error{"unknown luanch state: "+ls};
+
+  return ei;
+}
+
+Json Computer::EmbeddingInfo::json()
+{
+  Json j;
+  j["host"] = host;
+  j["assigned"] = assigned;
+
+  string ls;
+  switch(launch_state)
+  {
+    case LaunchState::None: ls = "None"; break;
+    case LaunchState::Queued: ls = "Queued"; break;
+    case LaunchState::Launching: ls = "Launching"; break;
+    case LaunchState::Up: ls = "Up"; break;
+  }
+  j["launch-state"] = ls;
+
+  return j;
+}
+
+
+
 // Link ------------------------------------------------------------------------
 Link::Link(Interface a, Interface b)
   : endpoints{{a.mac(), b.mac()}}
+{}
+
+Link::Link(string a, string b)
+  : endpoints{{a, b}}
 {}
 
 Link Link::fromJson(Json j)

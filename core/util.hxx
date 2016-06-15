@@ -4,17 +4,13 @@
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include <mutex>
 #include <functional>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
 #include "3p/json/src/json.hpp"
 #include "common/net/proto.hxx"
 #include "common/net/http_server.hxx"
-
-/*
-#include <bsoncxx/builder/basic/document.hpp>
-#include <bsoncxx/builder/basic/array.hpp>
-#include <bsoncxx/builder/basic/kvp.hpp>
-#include <bsoncxx/json.hpp>
-*/
 
 namespace marina {
 
@@ -54,8 +50,65 @@ std::string generate_guid();
 std::function<http::Response(http::Message)> 
 jsonIn(std::function<http::Response(Json)>);
 
-http::Response badRequest(std::string path, Json & j);
-http::Response unexpectedFailure(std::string path, Json & j, std::exception &e);
+http::Response 
+badRequest(std::string path, const Json & j, std::out_of_range &e);
+
+http::Response 
+unexpectedFailure(std::string path, const Json & j, std::exception &e);
+
+struct CmdResult
+{
+  std::string output;
+  int code{0};
+};
+
+CmdResult exec(std::string cmd);
+
+template <class Key, class Value>
+class LinearIdCacheMap
+{
+  public:
+    Value create(Key key)
+    {
+      lk_.lock();
+      if(m_.find(key) != m_.end()) return m_.at(key);
+      lk_.unlock();
+
+      return m_[key] = v_++;
+    }
+
+    Value get(Key key) 
+    { 
+      lk_.lock();
+      Value v = m_.at(key);
+      lk_.unlock();
+      return v;
+    }
+
+  private:
+    std::mutex mtx_;
+    std::unique_lock<std::mutex> lk_{mtx_, std::defer_lock_t{}};
+    Value v_{};
+    std::unordered_map<Key, Value> m_;
+};
+
+struct RtReq
+{
+  nlmsghdr header;
+  ifinfomsg msg;
+};
+
+std::string mac_2_ifname(std::string mac);
+
+inline auto extract(Json j, std::string tag, std::string context)
+{
+  try { return j.at(tag); }
+  catch(...) 
+  { 
+    LOG(ERROR) << j;
+    throw std::out_of_range{"error extracting " + context+":"+tag};
+  }
+}
 
 }
 

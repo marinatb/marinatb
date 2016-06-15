@@ -92,7 +92,7 @@ HttpRequest::HttpRequest( HTTPMethod mtd,
   : HttpRequest(
       mtd,
       url,
-      move(unique_ptr<IOBuf>{nullptr}),
+      unique_ptr<IOBuf>{nullptr},
       recv_window,
       log_suffix)
 {}

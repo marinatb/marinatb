@@ -15,6 +15,8 @@ using std::default_random_engine;
 using std::random_device;
 using std::exception;
 using std::invalid_argument;
+using std::runtime_error;
+using std::out_of_range;
 using std::function;
 
 using namespace marina;
@@ -67,17 +69,42 @@ marina::jsonIn(function<http::Response(Json)> f)
   };
 }
 
-http::Response marina::badRequest(string path, Json & j)
+http::Response marina::badRequest(string path, const Json & j, out_of_range &e)
 {
   LOG(ERROR) << "[" << path << "] bad request";
   LOG(ERROR) << j.dump(2);
+  LOG(ERROR) << e.what();
   return http::Response{ http::Status::BadRequest(), "" };
 }
 
-http::Response marina::unexpectedFailure(string path, Json & j, exception &e)
+http::Response 
+marina::unexpectedFailure(string path, const Json & j, exception &e)
 {
   LOG(ERROR) << "[" << path << "] unexpected failure";
   LOG(ERROR) << j.dump(2);
   LOG(ERROR) << e.what();
   return http::Response{ http::Status::InternalServerError(), "" };
 }
+
+CmdResult marina::exec(string cmd)
+{
+  CmdResult result;
+  char buffer[1024];
+  //TODO: ghetto redirect, should do something better
+  FILE *pipe = popen((cmd + " 2>&1").c_str(), "r");
+  if(pipe == nullptr) 
+  {
+    LOG(ERROR) << "exec popen failed for `" << cmd << "`";
+    throw runtime_error{"exec: popen failed"};
+  }
+  while(!feof(pipe))
+  {
+    if(fgets(buffer, 1024, pipe) != nullptr)
+      result.output += buffer;
+  }
+
+  int pexit = pclose(pipe);
+  result.code = WEXITSTATUS(pexit);
+  return result;
+}
+

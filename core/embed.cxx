@@ -6,6 +6,7 @@
 using std::vector;
 using std::sort;
 using std::make_pair;
+using std::string;
 using std::runtime_error;
 using namespace marina;
 using namespace pipes;
@@ -79,8 +80,8 @@ size_t embedBlueprintOnSwitch(Switch s, Blueprint m)
     //we found a home for c, so remove it from the embedding list
     xs.pop_back(); 
     //put c in it's new home
-    candidates.back().first.experimentMachines().push_back(c);
-    c.embedding( Embedding{candidates.back().first.name(), true} );
+    candidates.back().first.machines().push_back(c);
+    c.embedding( Computer::EmbeddingInfo{candidates.back().first.name(), true} );
     //book-keeping
     embedded++;
   }
@@ -127,11 +128,11 @@ void realizeEmbedding(Switch s, Blueprint m, TestbedTopology t)
   for(auto h : s.connectedHosts())
   {
     auto hh = *t.hosts().find(h.name());
-    for(auto c : h.experimentMachines())
+    for(auto c : h.machines())
     {
       auto cc = m.getComputer(c.name());
       cc.embedding({h.name(), true});
-      hh.experimentMachines().push_back(cc);
+      hh.machines().push_back(cc);
     }
   }
   auto ss = *t.switches().find(s.name());
@@ -196,5 +197,27 @@ TestbedTopology marina::embed(Blueprint m, TestbedTopology tt)
   }
   */
 
+  return t;
+}
+
+TestbedTopology marina::unembed(Blueprint bp, TestbedTopology tt)
+{
+  TestbedTopology t = tt.clone();
+
+  for(const Computer & c : bp.computers())
+  {
+    Host h = t.getHost(c.embedding().host);
+    h.removeMachine(c.interfaces().at("cifx").mac());
+  }
+
+  for(const Network & n : bp.networks())
+  {
+    for(const string & sname : n.einfo().switches)
+    {
+      Switch s = t.getSw(sname);
+      s.removeNetwork(n.guid());
+    }
+  }
+  
   return t;
 }

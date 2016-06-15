@@ -20,11 +20,19 @@ add_library( marina-core
   compilation.cxx
 )
 
+add_library( marina-netlink
+  netlink.cxx
+)
+
 target_link_libraries( marina-core 
   marinatb-common 
   pq
   uuid
+  fmt
 )
+
+add_executable( mac2ifname mac2ifname.cxx )
+target_link_libraries( mac2ifname marina-netlink )
 
 add_executable( accounts accounts.cxx )
 target_link_libraries( accounts 
@@ -55,6 +63,9 @@ target_link_libraries( host-control
   marina-core
   proxygenhttpserver 
 )
+
+add_executable( marina client.cxx )
+target_link_libraries( marina marina-core dl )
 
 install(TARGETS marina-core accounts access blueprint materialization host-control
   RUNTIME DESTINATION bin

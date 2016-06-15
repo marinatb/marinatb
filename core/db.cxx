@@ -1,10 +1,15 @@
+//TODO: update stringstream based queries to fmt::format ones
+
 #include <unistd.h>
 #include <stdexcept>
 #include <sstream>
+#include <fmt/format.h>
 #include "util.hxx"
 #include "core/db.hxx"
 
 using std::string;
+using std::vector;
+using std::stoul;
 using std::runtime_error;
 using std::out_of_range;
 using std::move;
@@ -97,6 +102,36 @@ Blueprint DB::fetchBlueprint(string project, string bp_name)
   return Blueprint::fromJson(json);
 }
 
+vector<Blueprint> DB::fetchBlueprints(string project)
+{
+  string q = fmt::format(
+    "SELECT doc FROM blueprints where project = "
+      "(SELECT id FROM projects WHERE name = '{pname}')",
+    fmt::arg("pname", project)
+  );
+
+  PGresult *res = PQexec(conn_, q.c_str());
+  if(PQresultStatus(res) != PGRES_TUPLES_OK)
+  {
+    LOG(ERROR) << "fetching project blueprints failed";
+    LOG(INFO) << PQerrorMessage(conn_);
+    PQclear(res);
+    throw runtime_error{"pq query failure"};
+  }
+
+  vector<Blueprint> result;
+  size_t n = PQntuples(res);
+  for(size_t i=0; i<n; ++i)
+  {
+    string j{PQgetvalue(res, i, 0)};
+    auto js = Json::parse(j);
+    result.push_back(Blueprint::fromJson(js)); 
+  }
+
+  return result;
+}
+
+
 void DB::deleteBlueprint(string project, string bp_name)
 {
  
@@ -167,7 +202,7 @@ string DB::saveMaterialization(string project, string bpid, Json mzn)
   return id;
 }
 
-Json DB::fetchMaterialization(string project, string bpid)
+Blueprint DB::fetchMaterialization(string project, string bpid)
 {
   string p{"'"+project+"'"},
          b{"'"+bpid+"'"};
@@ -205,7 +240,38 @@ Json DB::fetchMaterialization(string project, string bpid)
   LOG(INFO) << "fetched materialization";
 
   PQclear(res);
-  return j;
+  return Blueprint::fromJson(j);
+}
+
+vector<Blueprint> DB::fetchMaterializations(string project)
+{
+  string q = fmt::format(
+    "SELECT doc FROM materializations where blueprint IN "
+      "(SELECT id FROM blueprints WHERE project = "
+        "(SELECT id FROM projects WHERE name = '{pname}')"
+      ")",
+    fmt::arg("pname", project)
+  );
+
+  PGresult *res = PQexec(conn_, q.c_str());
+  if(PQresultStatus(res) != PGRES_TUPLES_OK)
+  {
+    LOG(ERROR) << "fetching project materializations failed";
+    LOG(INFO) << PQerrorMessage(conn_);
+    PQclear(res);
+    throw runtime_error{"pq query failure"};
+  }
+
+  vector<Blueprint> result;
+  size_t n = PQntuples(res);
+  for(size_t i=0; i<n; ++i)
+  {
+    string j{PQgetvalue(res, i, 0)};
+    auto js = Json::parse(j);
+    result.push_back(Blueprint::fromJson(js)); 
+  }
+
+  return result;
 }
 
 void DB::deleteMaterialization(string project, string bpid)
@@ -279,6 +345,13 @@ TestbedTopology DB::fetchHwTopo()
     PQclear(res);
     throw runtime_error{"pq query failure"};
   }
+  if(PQntuples(res) < 1)
+  {
+    string msg{"the testbed does not have a topology!?"};
+    LOG(ERROR) << msg;
+    PQclear(res);
+    throw runtime_error{msg};
+  }
   
   string j{PQgetvalue(res, 0, 0)};
 
@@ -289,6 +362,33 @@ TestbedTopology DB::fetchHwTopo()
 }
 
 void DB::deleteHwTopo()
+{
+  throw runtime_error{"not implemented"};
+}
+
+size_t DB::newVxlanVni(string netid)
+{
+  string q = fmt::format(
+    "INSERT INTO vxlan (netid) values('{}') RETURNING vni",
+    netid
+  );
+
+  PGresult *res = PQexec(conn_, q.c_str());
+  if(PQresultStatus(res) != PGRES_TUPLES_OK)
+  {
+    LOG(ERROR) << "creating new vxlan vni failed";
+    LOG(ERROR) << PQerrorMessage(conn_);
+    PQclear(res);
+    throw runtime_error{"pq query failure"};
+  }
+
+  string sv{PQgetvalue(res, 0, 0)};
+
+  PQclear(res);
+  return stoul(sv);
+}
+
+void freeVxlanVni(string /*netid*/)
 {
   throw runtime_error{"not implemented"};
 }

@@ -12,7 +12,7 @@ using std::string;
 using proxygen::HTTPMethod;
 using namespace marina;
 
-static Blueprint m = mars();
+static Blueprint m = hello_marina();
 
 Json svcRequest(string svc, string path, Json msg)
 {
@@ -26,7 +26,7 @@ Json svcRequest(string svc, string path, Json msg)
   return res.bodyAsJson();
 }
 
-TEST_CASE("mars-construct", "[api-mzn]")
+TEST_CASE("hi-marina-construct", "[api-mzn-up]")
 {
   DB db{"postgresql://murphy:muffins@db"};
   db.setHwTopo(minibed().json());
@@ -38,11 +38,11 @@ TEST_CASE("mars-construct", "[api-mzn]")
 
   rq = Json{};
   rq["project"] = "backyard";
-  rq["bpid"] = "mars";
+  rq["bpid"] = "hello-marina";
   auto res = svcRequest("materialization", "construct", rq);
 
   REQUIRE( res.at("project").get<string>() == "backyard" );
-  REQUIRE( res.at("bpid").get<string>() == "mars" );
+  REQUIRE( res.at("bpid").get<string>() == "hello-marina" );
   REQUIRE( res.at("action").get<string>() == "constructed" );
 
   Json minfo = svcRequest("materialization", "info", rq);
@@ -50,21 +50,30 @@ TEST_CASE("mars-construct", "[api-mzn]")
 
   for(Computer & c : bp.computers())
   {
-    Embedding e = c.embedding();
+    Computer::EmbeddingInfo e = c.embedding();
     REQUIRE( e.host != "goblin" );
     REQUIRE( e.assigned == true );
   }
+}
 
-  res = svcRequest("materialization", "destruct", rq);
+TEST_CASE("hi-marina-destruct", "[api-mzn-down]")
+{
+  DB db{"postgresql://murphy:muffins@db"};
+  db.setHwTopo(minibed().json());
+
+  Json rq = Json{};
+  rq["project"] = "backyard";
+  rq["bpid"] = "hello-marina";
+
+  auto res = svcRequest("materialization", "destruct", rq);
   
   REQUIRE( res.at("project").get<string>() == "backyard" );
-  REQUIRE( res.at("bpid").get<string>() == "mars" );
+  REQUIRE( res.at("bpid").get<string>() == "hello-marina" );
   REQUIRE( res.at("action").get<string>() == "deconstructed" );
 
   res = svcRequest("blueprint", "delete", rq);
   
   REQUIRE( res.at("project").get<string>() == "backyard" );
-  REQUIRE( res.at("bpid").get<string>() == "mars" );
+  REQUIRE( res.at("bpid").get<string>() == "hello-marina" );
   REQUIRE( res.at("action").get<string>() == "deleted" );
-
 }
