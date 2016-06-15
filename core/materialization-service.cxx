@@ -202,6 +202,7 @@ http::Response destruct(Json j)
     vector<future<http::Message>> replys;
     for(const string & h : hosts)
     {
+      LOG(INFO) << "destructing " << bp.name() << " on " << h;
       Blueprint lbp = bp.localEmbedding(h);  
       replys.push_back(
         HttpRequest

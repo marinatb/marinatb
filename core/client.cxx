@@ -245,7 +245,6 @@ void tcc(string source)
   ofstream ofs{ir};
   ofs << tt.json().dump(2);
   ofs.close();
-
 }
 
 string readSource(string id)
@@ -330,7 +329,21 @@ void up(string pid, string bid)
 
 void down(string pid, string bid)
 {
-  cout << __func__ << endl;
+  Json msg;
+  msg["project"] = pid;
+  msg["bpid"] = bid;
+  
+  HttpRequest rq{
+    HTTPMethod::POST,
+    "https://api/materialization/destruct",
+    msg.dump(2)
+  };
+  auto res = rq.response().get();
+  if(res.msg->getStatusCode() != 200)
+  {
+    cerr << "failed to de-materialize blueprint" << endl;
+    exit(1);
+  }
 }
 
 void console(string mzn, string node)
