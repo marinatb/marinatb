@@ -242,7 +242,9 @@ void plopLinuxConfig(const Computer & c, string dst, string img)
   exec("modprobe nbd max_part=8");
 
   //copy the network init script to the guest drive image
-  exec("qemu-nbd --disconnect /dev/nbd0"); //just to be sure
+  //unmount and disconnect anything that is already hooked up
+  exec("umount /space/tmount");
+  exec("qemu-nbd --disconnect /dev/nbd0"); 
   CmdResult cr = exec(fmt::format("qemu-nbd --connect=/dev/nbd0 {}", img));
   if(cr.code != 0) 
     execFail(cr, "failed to create network boodtdisk for qeumu image " + img);
@@ -257,32 +259,32 @@ void plopLinuxConfig(const Computer & c, string dst, string img)
   cr = exec("mkdir -p /space/tmount/marina");
   if(cr.code != 0)
   {
-    exec("qemu-nbd --disconnect /dev/nbd0");
     exec("umount /space/tmount");
+    exec("qemu-nbd --disconnect /dev/nbd0");
     execFail(cr, "failed to create marina root dir on node {}" + c.name());
   }
 
   cr = exec(fmt::format("cp {} {}", initscript, "/space/tmount/marina/init"));  
   if(cr.code != 0)
   {
-    exec("qemu-nbd --disconnect /dev/nbd0");
     exec("umount /space/tmount");
+    exec("qemu-nbd --disconnect /dev/nbd0");
     execFail(cr, "failed to plop initscript into " + c.name());
   }
 
   cr = exec("cp /home/murphy/host-pkg/libs/* /space/tmount/usr/local/lib/");
   if(cr.code != 0)
   {
-    exec("qemu-nbd --disconnect /dev/nbd0");
     exec("umount /space/tmount");
+    exec("qemu-nbd --disconnect /dev/nbd0");
     execFail(cr, "failed to plop libs into " + c.name());
   }
   
   cr = exec("cp /home/murphy/host-pkg/bin/* /space/tmount/usr/local/bin/");
   if(cr.code != 0)
   {
-    exec("qemu-nbd --disconnect /dev/nbd0");
     exec("umount /space/tmount");
+    exec("qemu-nbd --disconnect /dev/nbd0");
     execFail(cr, "failed to plop bins into " + c.name());
   }
   
@@ -526,9 +528,9 @@ void launchComputers(Blueprint & bp)
     c.embedding().launch_state = LS::Queued;
   }
 
-  //TODO privide something more efficient like update node launch state
-  //or some such
-  db->saveMaterialization(bp.project(), bp.name(), bp.json());
+  //TODO need to do this more granularly, e.g. just update the launch state
+  //because this is an overwriting race between the host controllers
+  //db->saveMaterialization(bp.project(), bp.name(), bp.json());
 
   for(Computer & c : bp.computers())
   {
@@ -603,6 +605,9 @@ void terminateComputers(const Blueprint & bp)
       execFail(cr, 
           fmt::format("failed to terminate computer {}/{}", bp.id(), c.name())
       );
+
+    qkId.erase(c.interfaces().at("cifx").mac());
+   
   }
 }
 
@@ -614,6 +619,16 @@ void terminateNetworks(const Blueprint & bp)
     string cmd = fmt::format("ovs-vsctl del-br {}", br_id);
     CmdResult cr = exec(cmd);
     if(cr.code != 0) execFail(cr, "failed to terminate network bridge "+br_id);
+
+    bridgeId.erase(n.guid());
+    
+    for(const Neighbor & nbr : n.connections())
+    {
+      if(nbr.kind == Neighbor::Kind::Computer)
+      {
+        vhostId.erase(nbr.id); 
+      }
+    }
   }
 }
 

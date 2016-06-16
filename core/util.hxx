@@ -71,7 +71,12 @@ class LinearIdCacheMap
     Value create(Key key)
     {
       lk_.lock();
-      if(m_.find(key) != m_.end()) return m_.at(key);
+      if(m_.find(key) != m_.end()) 
+      {
+        auto v = m_.at(key);
+        lk_.unlock();
+        return v;
+      }
       lk_.unlock();
 
       return m_[key] = v_++;
@@ -83,6 +88,13 @@ class LinearIdCacheMap
       Value v = m_.at(key);
       lk_.unlock();
       return v;
+    }
+
+    void erase(Key key)
+    {
+      lk_.lock();
+      m_.erase(key);
+      lk_.unlock();
     }
 
   private:

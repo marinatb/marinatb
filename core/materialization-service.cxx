@@ -189,14 +189,10 @@ http::Response destruct(Json j)
       hosts.insert(c.embedding().host);
     }
 
-    //TODO the embedding model should probably contain some information
-    //about the networks, when it does this will be the place to get
-    //rid of it
-    /*
     for(const Network & n : bp.networks())
     {
-
-    }*/
+      db->freeVxlanVni(n.guid());
+    }
    
     //async command to remove computers and networks from relevant hosts
     vector<future<http::Message>> replys;

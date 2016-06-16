@@ -176,6 +176,7 @@ void* compileSrc(string src)
         "clang++ "
         "-stdlib=libc++ -std=c++14 -fPIC -shared "
         "-I{mrsrc} -I/usr/local/include/c++/v1 "
+        "-L/usr/local/lib "
         "{src} "
         "-o {out}",
         fmt::arg("src", src),

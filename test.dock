@@ -7,6 +7,10 @@ RUN mkdir -p /marina && ln -s /code/build/test/api/run_api_tests /marina/run_api
 ADD pkg/usr/local /usr/local
 RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/marinalibs.conf && ldconfig
 
-RUN apt-get install -y postgresql
+RUN apt-get update
+RUN apt-get upgrade -y
+RUN apt-get install -y postgresql clang --fix-missing
+
+ENV MARINA_SRC /code
 
 ENTRYPOINT ["/marina/run_api_tests"]

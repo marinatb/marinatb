@@ -388,7 +388,21 @@ size_t DB::newVxlanVni(string netid)
   return stoul(sv);
 }
 
-void freeVxlanVni(string /*netid*/)
+void DB::freeVxlanVni(string netid)
 {
-  throw runtime_error{"not implemented"};
+  string q = fmt::format(
+    "DELETE FROM vxlan WHERE netid = '{}'",
+    netid
+  );
+
+  PGresult *res = PQexec(conn_, q.c_str());
+  if(PQresultStatus(res) != PGRES_COMMAND_OK)
+  {
+    LOG(ERROR) << "destroying vxlan vni failed";
+    LOG(ERROR) << PQerrorMessage(conn_);
+    PQclear(res);
+    throw runtime_error{"pq query failure"};
+  }
+
+  PQclear(res);
 }
