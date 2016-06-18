@@ -69,6 +69,7 @@ namespace marina
     Memory memory{4_gb}, disk{10_gb};
     size_t cores{2};
     Computer::EmbeddingInfo embedding;
+    string guid =  generate_guid();
 
     unordered_map<string, Interface> interfaces;
   };
@@ -662,6 +663,17 @@ Json IpV4Address::json() const
 }
 
 // Network ---------------------------------------------------------------------
+size_t Network_Guid_Hash::operator() (const Network &c) const
+{
+  return std::hash<string>{}(c.guid());
+}
+
+bool Network_Guid_Cmp::operator() (const Network &a, const Network &b) const
+{
+  Network_Guid_Hash h{};
+  return h(a) == h(b);
+}
+
 Network::Network(string name)
   : _{new Network_{name}}
 { }
@@ -1018,11 +1030,25 @@ HwSpec marina::operator- (HwSpec a, HwSpec b)
 }
 
 // Computer --------------------------------------------------------------------
+
+size_t Computer_Guid_Hash::operator() (const Computer &c) const
+{
+  return std::hash<string>{}(c.guid());
+}
+
+bool Computer_Guid_Cmp::operator() (const Computer &a, const Computer &b) const
+{
+  Computer_Guid_Hash h{};
+  return h(a) == h(b);
+}
+
 Computer::Computer(string name)
   : _{new Computer_{name}}
 {
   add_ifx("cifx", 1_gbps);
 }
+
+string Computer::guid() const { return _->guid; }
 
 Computer Computer::fromJson(Json j)
 {
@@ -1033,6 +1059,8 @@ Computer Computer::fromJson(Json j)
   c.cores(extract(j, "cores", "computer"));
   c.embedding(Computer::EmbeddingInfo::fromJson(
         extract(j, "embedding", "computer")));
+
+  c._->guid = extract(j, "guid", "computer");
 
   Json ifxs = extract(j, "interfaces", "computer");
   for(const Json & ij : ifxs)
@@ -1134,6 +1162,7 @@ Json Computer::json() const
   j["cores"] = cores();
   j["interfaces"] = jtransform(_->interfaces);
   j["embedding"] = embedding().json();
+  j["guid"] = guid();
   return j;
 }
 
@@ -1145,6 +1174,7 @@ Computer Computer::clone() const
   c._->cores = _->cores;
   c._->disk = _->disk;
   c._->embedding = _->embedding;
+  c._->guid = _->guid;
 
   for(auto & p : _->interfaces)
   { 

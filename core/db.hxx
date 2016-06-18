@@ -40,6 +40,7 @@ namespace marina
 
 
     private:
+      void connect();
       std::string address_;
       PGconn *conn_{nullptr};
   };

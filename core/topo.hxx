@@ -37,41 +37,56 @@ namespace marina {
 
   struct SwitchSetCMP
   {
-    bool operator() (const Switch &, const Switch &);
+    bool operator() (const Switch &, const Switch &) const;
   };
 
   struct SwitchSetHash
   {
-    size_t operator() (const Switch &);
+    size_t operator() (const Switch &) const;
   };
 
   struct HostSetCMP
   {
-    bool operator() (const Host &, const Host &);
+    bool operator() (const Host &, const Host &) const;
   };
 
   struct HostSetHash
   {
-    size_t operator() (const Host &);
+    size_t operator() (const Host &) const;
   };
+
+  /*
+  struct Endpoint
+  {
+    enum class ComponentKind { Host, Switch };
+
+    Endpoint(ComponentKind kind, std::string component_id, std::string mac);
+
+    ComponentKind kind;
+    std::string component_id, mac;
+  };
+  */
 
   class TestbedTopology
   {
     public:
+      using SwitchSet = std::unordered_set<Switch, SwitchSetHash, SwitchSetCMP>;
+      using HostSet = std::unordered_set<Host, HostSetHash, HostSetCMP>;
+
       TestbedTopology(std::string);
 
       std::string name() const;
       TestbedTopology & name(std::string);
       static TestbedTopology fromJson(Json);
 
-      std::unordered_set<Switch, SwitchSetHash, SwitchSetCMP> & 
-      switches() const;
-
-      std::unordered_set<Host, HostSetHash, HostSetCMP> & 
-      hosts() const;
+      SwitchSet & switches() const;
+      HostSet & hosts() const;
 
       Switch sw(std::string);
       Host host(std::string);
+
+      HostSet connectedHosts(const Switch s);
+      SwitchSet connectedSwitches(const Host h);
 
       void removeSw(std::string);
       void removeHost(std::string);
@@ -105,7 +120,9 @@ namespace marina {
       std::string name() const;
       Switch & name(std::string);
 
-      std::vector<Host> & connectedHosts() const;
+      //std::vector<Host> & connectedHosts(TestbedTopology &) const;
+      //std::vector<std::string> connectedHosts() const;
+
 
       //backplane
       Bandwidth backplane() const;
@@ -123,38 +140,6 @@ namespace marina {
       void connect(Host, Switch, Bandwidth);
       std::shared_ptr<struct Switch_> _;
   };
-
-  struct Load
-  {
-    Load() = default;
-    Load(size_t used, size_t total) : used{used}, total{total} {}
-    size_t used{0}, total{0};
-
-    double percentFree() const, 
-           percentUsed() const;
-
-    bool overloaded() const;
-  };
-
-  Load operator + (Load, Load);
-
-  struct LoadVector
-  {
-    Load proc, mem, net, disk;    
-
-    LoadVector operator+ (HwSpec) const;
-
-    bool overloaded() const;
-    HwSpec used(),
-           total();
-
-    double norm(),
-           inf_norm(),
-           free_norm(),
-           free_inf_norm();
-  };
-
-  LoadVector operator + (LoadVector, LoadVector);
 
   class Host
   {
@@ -191,7 +176,7 @@ namespace marina {
       std::unordered_map<std::string, Interface> & interfaces() const; 
 
       //resource management
-      LoadVector loadv() const;
+      //LoadVector loadv() const;
 
       Json json() const;
       Host clone() const;

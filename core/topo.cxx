@@ -1,5 +1,6 @@
 #include <stdexcept>
 #include <algorithm>
+#include <sstream>
 #include <unordered_set>
 #include "topo.hxx"
 #include "util.hxx"
@@ -8,6 +9,7 @@
 using std::runtime_error;
 using std::out_of_range;
 using std::string;
+using std::stringstream;
 using std::unordered_set;
 using std::hash;
 using std::vector;
@@ -16,26 +18,27 @@ using std::set_difference;
 using std::inserter;
 using std::unordered_map;
 using std::remove_if;
+using std::endl;
 using namespace marina;
 using namespace pipes;
 
-size_t SwitchSetHash::operator() (const Switch & s) 
+size_t SwitchSetHash::operator() (const Switch & s) const
 { 
   return hash<string>{}(s.name()); 
 }
 
-size_t HostSetHash::operator() (const Host & c) 
+size_t HostSetHash::operator() (const Host & c) const
 { 
   return hash<string>{}(c.name()); 
 }
 
-bool SwitchSetCMP::operator() (const Switch & a, const Switch & b)
+bool SwitchSetCMP::operator() (const Switch & a, const Switch & b) const
 {
   SwitchSetHash h;
   return h(a) == h(b);
 }
 
-bool HostSetCMP::operator() (const Host & a, const Host & b)
+bool HostSetCMP::operator() (const Host & a, const Host & b) const
 {
   HostSetHash h;
   return h(a) == h(b);
@@ -46,21 +49,6 @@ bool marina::operator== (const Switch & a, const Switch & b)
   if(a.name() != b.name()) return false;
   if(a.backplane() != b.backplane()) return false;
   if(a.allocatedBackplane() != b.allocatedBackplane()) return false;
-
-  if(a.connectedHosts().size() != b.connectedHosts().size()) return false;
-
-  vector<Host> ahs = a.connectedHosts(),
-               bhs = a.connectedHosts();
-
-  auto cmp = [](const Host & x, const Host & y) { return x.name() < y.name(); };
-
-  sort(ahs.begin(), ahs.end(), cmp);
-  sort(bhs.begin(), bhs.end(), cmp);
-
-  for(size_t i=0; i<ahs.size(); ++i)
-  {
-    if(ahs[i] != bhs[i]) return false;
-  }
 
   return true;
 }
@@ -191,9 +179,7 @@ namespace marina {
 
     string name;
     Bandwidth backplane;
-              //allocated_backplane{0_gbps};
 
-    vector<Host> connected_hosts;
     vector<Network> networks;
   };
 
@@ -296,6 +282,45 @@ Host TestbedTopology::host(string name)
   return c;
 }
 
+TestbedTopology::HostSet TestbedTopology::connectedHosts(const Switch s)
+{
+  TestbedTopology::HostSet hs;
+  for(TbLink & l : _->links)
+  {
+    if(l.endpoints[0].name == s.name() && 
+       l.endpoints[1].kind == Endpoint::Kind::Host)
+    {
+      hs.insert(getHost(l.endpoints[1].name)); 
+    }
+    
+    if(l.endpoints[1].name == s.name() && 
+       l.endpoints[0].kind == Endpoint::Kind::Host)
+    {
+      hs.insert(getHost(l.endpoints[0].name)); 
+    }
+  }
+  return hs;
+}
+
+TestbedTopology::SwitchSet TestbedTopology::connectedSwitches(const Host h)
+{
+  TestbedTopology::SwitchSet sws;
+  for(TbLink & l : _->links)
+  {
+    if(l.endpoints[0].name == h.name() &&
+       l.endpoints[1].kind == Endpoint::Kind::Switch)
+    {
+      sws.insert(getSw(l.endpoints[1].name));
+    }
+    if(l.endpoints[1].name == h.name() &&
+       l.endpoints[0].kind == Endpoint::Kind::Switch)
+    {
+      sws.insert(getSw(l.endpoints[0].name));
+    }
+  }
+  return sws;
+}
+
 void TestbedTopology::connect(Switch a, Switch b, Bandwidth bw)
 {
   _->links.push_back({a, b, bw});
@@ -304,7 +329,6 @@ void TestbedTopology::connect(Switch a, Switch b, Bandwidth bw)
 void TestbedTopology::connect(Host a, Switch b, Bandwidth bw)
 {
   _->links.push_back({a, b, bw});
-  b._->connected_hosts.push_back(a);
 }
 
 Json TestbedTopology::json() const
@@ -415,12 +439,6 @@ void Switch::removeNetwork(std::string guid)
   );
 }
 
-
-std::vector<Host> & Switch::connectedHosts() const
-{
-  return _->connected_hosts;
-}
-
 Bandwidth Switch::backplane() const { return _->backplane; }
 Switch & Switch::backplane(Bandwidth b)
 {
@@ -438,25 +456,11 @@ Bandwidth Switch::allocatedBackplane() const
   return Bandwidth{x, Bandwidth::Unit::MBPS};
 }
 
-//Switch & Switch::allocatedBackplane(Bandwidth b)
-//{
-//  _->allocated_backplane = b;
-//  return *this;
-//}
-
 Switch Switch::fromJson(Json j)
 {
   string name = extract(j, "name", "switch");
   Switch s{name};
   s.backplane(Bandwidth::fromJson(extract(j, "backplane", "switch")));
-  //s.allocatedBackplane(
-  //    Bandwidth::fromJson(extract(j, "allocated-backplane", "switch")));
-  
-  Json chs = extract(j, "connected-hosts", "switch");
-  for(const Json & hj : chs)
-  {
-    s.connectedHosts().push_back(Host::fromJson(hj));
-  }
 
   Json njs = extract(j, "networks", "switch");
   for(const Json & n : njs)
@@ -473,7 +477,6 @@ Json Switch::json() const
   j["name"] = name();
   j["backplane"] = backplane().json();
   j["allocated-backplane"] = allocatedBackplane().json();
-  j["connected-hosts"] = jtransform(connectedHosts());
   j["networks"] = jtransform(_->networks);
 
   return j;
@@ -483,105 +486,10 @@ Switch Switch::clone() const
 {
   Switch s{_->name};
   s._->backplane = _->backplane;
-  s._->connected_hosts = _->connected_hosts 
-    | map([](auto x){ return x.clone(); });
   s._->networks = _->networks
     | map([](auto x){ return x.clone(); });
 
   return s;
-}
-
-// Load ------------------------------------------------------------------------
-bool Load::overloaded() const { return used > total; }
-
-double Load::percentUsed() const
-{
-  if(total == 0) return 0;
-  return static_cast<double>(used) / static_cast<double>(total);  
-}
-
-double Load::percentFree() const
-{
-  return 1.0 - percentUsed();
-}
-  
-Load marina::operator + (Load x, Load y)
-{
-  Load z;
-  z.used = x.used + y.used;
-  z.total = x.total + y.total;
-  return z;
-}
-
-// LoadVector ------------------------------------------------------------------
-LoadVector LoadVector::operator+ (HwSpec x) const
-{
-  LoadVector v = *this;
-  v.proc.used += x.proc;
-  v.mem.used += x.mem;
-  v.net.used += x.net;
-  v.disk.used += x.disk;
-  return v;
-}
-
-bool LoadVector::overloaded() const
-{
-  return 
-    proc.overloaded() || 
-    mem.overloaded() || 
-    net.overloaded() || 
-    disk.overloaded();
-}
-
-HwSpec LoadVector::used()
-{
-  return HwSpec{proc.used, mem.used, net.used, disk.used};
-}
-
-HwSpec LoadVector::total()
-{
-  return HwSpec{proc.total, mem.total, net.total, disk.total};
-}
-
-double LoadVector::norm()
-{
-  return (
-      proc.percentUsed() +
-      mem.percentUsed() +
-      net.percentUsed() +
-      disk.percentUsed() ) / 4.0;
-
-}
-
-double LoadVector::inf_norm()
-{
-  auto x = used();
-  return x.neg_inf_norm();
-}
-
-double LoadVector::free_inf_norm()
-{
-  auto x = total() - used();
-  return x.inf_norm();
-}
-
-double LoadVector::free_norm()
-{
-  return (
-      proc.percentFree() +
-      mem.percentFree() +
-      net.percentFree() +
-      disk.percentFree() ) / 4.0;
-}
-  
-LoadVector marina::operator + (LoadVector x, LoadVector y)
-{
-  LoadVector z;
-  z.proc = x.proc + y.proc;
-  z.mem = x.mem + y.mem;
-  z.net = x.net + y.net;
-  z.disk = x.disk + y.disk;
-  return z;
 }
 
 // Host ------------------------------------------------------------------------
@@ -589,8 +497,6 @@ LoadVector marina::operator + (LoadVector x, LoadVector y)
 Host::Host(string name)
   : _{new Host_{name}}
 {}
-
-
 
 string Host::name() const { return _->host_comp.name(); }
 Host & Host::name(string name)
@@ -620,24 +526,6 @@ Host & Host::cores(size_t n)
   return *this;
 }
 
-/*
-const Interface Host::ifx() const
-{
-  return _->host_comp.ifx("ifx");
-}
-
-unordered_map<string, Interface> & Host::interfaces() const
-{
-  return _->host_comp.interfaces();
-}
-
-Host & Host::ifx(Bandwidth b)
-{
-  _->host_comp.ifx("ifx").capacity(b);
-  return *this;
-}
-*/
-
 Interface Host::ifx(string name)
 {
   return _->host_comp.ifx(name);
@@ -658,36 +546,6 @@ Host & Host::remove_ifx(string name)
 unordered_map<string, Interface> & Host::interfaces() const
 {
   return _->host_comp.interfaces();
-}
-
-
-LoadVector Host::loadv() const
-{
-  LoadVector v;
-  v.proc.total = cores();
-  v.proc.used = machines()
-    | map([](auto x){ return x.cores(); }) 
-    | reduce(plus);
-
-  v.mem.total = memory().bytes();
-  v.mem.used = machines()
-    | map([](auto x){ return x.memory().bytes(); })
-    | reduce(plus);
-
-  v.disk.total = disk().megabytes();
-  v.mem.used = machines()
-    | map([](auto x){ return x.disk().bytes(); })
-    | reduce(plus);
-
-  for(const auto & x : interfaces())
-    v.net.total += x.second.capacity().megabits();
-
-  //v.net.total = ifx().capacity().megabits();
-  v.net.used = machines()
-    | map([](auto x){ return x.hwspec().net; })
-    | reduce(plus);
-
-  return v;
 }
 
 vector<Computer> & Host::machines() const 

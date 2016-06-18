@@ -16,10 +16,12 @@ using std::move;
 using std::stringstream;
 using namespace marina;
 
+
 DB::DB(string address)
   : address_{address},
     conn_{PQconnectdb(address.c_str())}
 {
+  /*
   while(PQstatus(conn_) != CONNECTION_OK)
   {
     string msg{"connection to database failed. connection string: " + address};
@@ -27,11 +29,24 @@ DB::DB(string address)
     usleep(33e4);
     conn_ = PQconnectdb(address.c_str());
   }
+  */
 }
 
 DB::~DB()
 {
   PQfinish(conn_);
+}
+
+void DB::connect()
+{
+  conn_ = PQconnectdb(address_.c_str());
+  while(PQstatus(conn_) != CONNECTION_OK)
+  {
+    string msg{"connection to database failed. connection string: " + address_};
+    LOG(ERROR) << msg;
+    usleep(33e4);
+    conn_ = PQconnectdb(address_.c_str());
+  }
 }
 
 // blueprint +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -51,6 +66,7 @@ string DB::saveBlueprint(string project, Json src)
 
   string q = ss.str();
 
+  connect();
   PGresult *res = PQexec( conn_, q.c_str() );
 
   if(PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -79,6 +95,7 @@ Blueprint DB::fetchBlueprint(string project, string bp_name)
 
   string q = ss.str();
 
+  connect();
   PGresult *res = PQexec( conn_, q.c_str() );
   
   if(PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -110,6 +127,7 @@ vector<Blueprint> DB::fetchBlueprints(string project)
     fmt::arg("pname", project)
   );
 
+  connect();
   PGresult *res = PQexec(conn_, q.c_str());
   if(PQresultStatus(res) != PGRES_TUPLES_OK)
   {
@@ -152,6 +170,7 @@ void DB::deleteBlueprint(string project, string bp_name)
 
   string q = ss.str();
 
+  connect();
   PGresult *res = PQexec( conn_, q.c_str() );
   
   if(PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -185,6 +204,7 @@ string DB::saveMaterialization(string project, string bpid, Json mzn)
 
   string q = ss.str();
 
+  connect();
   PGresult *res = PQexec(conn_, q.c_str());
 
   if(PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -220,6 +240,7 @@ Blueprint DB::fetchMaterialization(string project, string bpid)
 
   string q = ss.str();
 
+  connect();
   PGresult *res = PQexec(conn_, q.c_str());
   
   if(PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -253,6 +274,7 @@ vector<Blueprint> DB::fetchMaterializations(string project)
     fmt::arg("pname", project)
   );
 
+  connect();
   PGresult *res = PQexec(conn_, q.c_str());
   if(PQresultStatus(res) != PGRES_TUPLES_OK)
   {
@@ -292,6 +314,7 @@ void DB::deleteMaterialization(string project, string bpid)
   
   string q = ss.str();
   
+  connect();
   PGresult *res = PQexec( conn_, q.c_str() );
   
   if(PQresultStatus(res) != PGRES_COMMAND_OK)
@@ -319,6 +342,7 @@ void DB::setHwTopo(Json topo)
 
   string q = ss.str();
 
+  connect();
   PGresult *res = PQexec(conn_, q.c_str());
   
   if(PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -336,6 +360,7 @@ TestbedTopology DB::fetchHwTopo()
 {
   string q{"SELECT doc FROM hw_topology"};
   
+  connect();
   PGresult *res = PQexec(conn_, q.c_str());
   
   if(PQresultStatus(res) != PGRES_TUPLES_OK)
@@ -373,6 +398,7 @@ size_t DB::newVxlanVni(string netid)
     netid
   );
 
+  connect();
   PGresult *res = PQexec(conn_, q.c_str());
   if(PQresultStatus(res) != PGRES_TUPLES_OK)
   {
@@ -395,6 +421,7 @@ void DB::freeVxlanVni(string netid)
     netid
   );
 
+  connect();
   PGresult *res = PQexec(conn_, q.c_str());
   if(PQresultStatus(res) != PGRES_COMMAND_OK)
   {

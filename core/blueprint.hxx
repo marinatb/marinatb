@@ -15,6 +15,26 @@ namespace marina
   class Computer;
   class Interface;
   using Json = nlohmann::json; 
+
+  struct Computer_Guid_Hash
+  {
+    size_t operator() (const Computer &) const;
+  };
+
+  struct Computer_Guid_Cmp
+  {
+    bool operator() (const Computer &, const Computer &) const;
+  };
+
+  struct Network_Guid_Hash
+  {
+    size_t operator() (const Network &) const;
+  };
+
+  struct Network_Guid_Cmp
+  {
+    bool operator() (const Network &, const Network &) const;
+  };
   
   struct Link
   {
@@ -349,6 +369,8 @@ namespace marina
 
       Computer(std::string name);
       static Computer fromJson(Json);
+      
+      std::string guid() const;
 
       //name
       std::string name() const;

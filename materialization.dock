@@ -9,4 +9,6 @@ RUN echo "/usr/local/lib" > /etc/ld.so.conf.d/marinalibs.conf && ldconfig
 ADD cert/materialization_cert.pem /marina/cert.pem
 ADD cert/materialization_key.pem /marina/key.pem
 
-ENTRYPOINT ["/marina/materialization"]
+ENV TERM xterm-256color
+
+ENTRYPOINT ["/marina/materialization", "-logbuflevel", "-1"]
