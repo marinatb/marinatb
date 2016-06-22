@@ -77,7 +77,7 @@ struct HostEmbedding
   HostEmbedding(Host);
 
   Host host;
-  std::unordered_set<Computer, Computer_Guid_Hash, Computer_Guid_Cmp> machines;
+  std::unordered_map<Uuid, Computer, UuidHash, UuidCmp> machines;
 
   LoadVector load() const;
   HostEmbedding operator+(Computer);
@@ -88,7 +88,7 @@ struct SwitchEmbedding
   SwitchEmbedding(Switch s);
 
   Switch sw;
-  std::unordered_set<Network, Network_Guid_Hash, Network_Guid_Cmp> networks;
+  std::unordered_map<Uuid, Network, UuidHash, UuidCmp> networks;
 };
 
 struct EChart

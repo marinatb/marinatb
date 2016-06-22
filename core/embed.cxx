@@ -134,24 +134,24 @@ LoadVector HostEmbedding::load() const
   LoadVector v;
   v.proc.total = host.cores();
   v.proc.used = machines
-    | map<vector>([](auto x){ return x.cores(); }) 
+    | map<vector>([](const auto & x){ return x.second.cores(); }) 
     | reduce(plus);
 
   v.mem.total = host.memory().megabytes();
   v.mem.used = machines
-    | map<vector>([](auto x){ return x.memory().megabytes(); })
+    | map<vector>([](auto x){ return x.second.memory().megabytes(); })
     | reduce(plus);
 
   v.disk.total = host.disk().megabytes();
   v.disk.used = machines
-    | map<vector>([](auto x){ return x.disk().megabytes(); })
+    | map<vector>([](auto x){ return x.second.disk().megabytes(); })
     | reduce(plus);
 
   for(const auto & x : host.interfaces())
     v.net.total += x.second.capacity().megabits();
 
   v.net.used = machines
-    | map<vector>([](auto x){ return x.hwspec().net; })
+    | map<vector>([](auto x){ return x.second.hwspec().net; })
     | reduce(plus);
 
   return v;
@@ -181,7 +181,7 @@ bool SE_Cmp::operator() (const SwitchEmbedding &a, const SwitchEmbedding &b)
 HostEmbedding HostEmbedding::operator+(Computer c)
 {
   HostEmbedding x = *this;
-  x.machines.insert(c);
+  x.machines.insert_or_assign(c.id(), c);
   return x;
 }
 
@@ -212,7 +212,7 @@ string EChart::overview()
 
     for(auto m : h.machines)
     {
-      ss << "  " << m.name() << endl;
+      ss << "  " << m.second.name() << endl;
     }
   }
 
@@ -230,7 +230,7 @@ HostEmbedding EChart::getEmbedding(Computer c)
   auto i = std::find_if(hmap.begin(), hmap.end(),
       [c](auto h)
       {
-        return h.machines.find(c) != h.machines.end();
+        return h.machines.find(c.id()) != h.machines.end();
       });
 
   if(i != hmap.end()) return *i;
@@ -243,7 +243,7 @@ vector<SwitchEmbedding> EChart::getEmbedding(Network n)
 
   for(auto se : smap)
   {
-    if(se.networks.find(n) != se.networks.end()) ses.push_back(se);
+    if(se.networks.find(n.id()) != se.networks.end()) ses.push_back(se);
   }
 
   return ses;
@@ -302,7 +302,7 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
           throw runtime_error{"unknown switch: " + p.first.name()};
 
         SwitchEmbedding swe = *i;
-        swe.networks.insert(nw.second);
+        swe.networks.insert_or_assign(nw.second.id(), nw.second);
         e.smap.erase(swe);
         e.smap.insert(swe);
       }
@@ -317,7 +317,7 @@ EChart marina::unembed(Blueprint bp, EChart ec)
   for(const auto & c : bp.computers())
   {
     auto e = ec.getEmbedding(c.second);
-    e.machines.erase(c.second);
+    e.machines.erase(c.second.id());
     ec.hmap.erase(e);
     ec.hmap.insert(e);
   }
@@ -327,7 +327,7 @@ EChart marina::unembed(Blueprint bp, EChart ec)
     auto es = ec.getEmbedding(n.second);
     for(auto e : es) 
     {
-      e.networks.erase(n.second);
+      e.networks.erase(n.second.id());
       ec.smap.erase(e);
       ec.smap.insert(e);
     }

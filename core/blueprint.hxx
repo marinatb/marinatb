@@ -15,76 +15,42 @@ namespace marina
   class Network;
   class Computer;
   class Interface;
-  using Json = nlohmann::json; 
-
-  struct Computer_Guid_Hash
-  {
-    size_t operator() (const Computer &) const;
-  };
-
-  struct Computer_Guid_Cmp
-  {
-    bool operator() (const Computer &, const Computer &) const;
-  };
-
-  struct Network_Guid_Hash
-  {
-    size_t operator() (const Network &) const;
-  };
-
-  struct Network_Guid_Cmp
-  {
-    bool operator() (const Network &, const Network &) const;
-  };
-  
-  struct Link
-  {
-    Link() = default;
-    Link(std::pair<Computer,Interface>, Network);
-    Link(Network, std::pair<Computer,Interface>);
-    Link(Network, Network);
-
-    //Link(Interface, Interface);
-    //Link(std::string, std::string);
-    static Link fromJson(Json);
-
-    Json json() const;
-    
-    std::array<Endpoint, 2> endpoints;
-  };
-
+  struct Link;
 
   // Blueprint -----------------------------------------------------------------
   class Blueprint
   {
     public:
+
+      //types
+      using ComputerMap = std::unordered_map<Uuid, Computer, UuidHash, UuidCmp>;
+      using NetworkMap = std::unordered_map<Uuid, Network, UuidHash, UuidCmp>;
+
+      //ctors
       Blueprint(std::string);
-      static Blueprint fromJson(Json);
 
       //name
       std::string name() const;
       Blueprint & name(std::string);
 
+      //TODO XXX
       //the project this blueprint is assigned to, may be empty initially
       std::string project() const;
       Blueprint & project(std::string);
 
-      //id a UUID that uniquely identifies this blueprint in the universe of
-      //all possible blueprints
+      //universally unique identifier
       Uuid id() const;
 
       //component constructors
       Network network(std::string name);
       Computer computer(std::string name);
 
-      using ComputerMap = std::unordered_map<Uuid, Computer, UuidHash, UuidCmp>;
       ComputerMap & computers() const;
-
-      using NetworkMap = std::unordered_map<Uuid, Network, UuidHash, UuidCmp>;
       NetworkMap & networks() const;
+
+      std::vector<Endpoint> neighbors(const Endpoint &);
       
       std::vector<Network> connectedNetworks(const Computer);
-      //std::vector<Computer> connectedComputers(const Network);
       Computer & getComputer(std::string name) const;
       Network & getNetwork(std::string name) const;
       Network getNetworkById(const Uuid & id) const;
@@ -99,15 +65,34 @@ namespace marina
       void connect(std::pair<Computer, Interface>, Network);
       void connect(Network, Network);
 
+      //TODO XXX
       //embedding
       Blueprint localEmbedding(std::string host_id);
 
+      //serialization
+      static Blueprint fromJson(Json);
       Json json() const;
 
       Blueprint clone() const;
 
     private:
       std::shared_ptr<struct Blueprint_> _;
+  };
+
+  // Link ----------------------------------------------------------------------
+  
+  struct Link
+  {
+    Link() = default;
+    Link(std::pair<Computer,Interface>, Network);
+    Link(Network, std::pair<Computer,Interface>);
+    Link(Network, Network);
+
+    static Link fromJson(Json);
+
+    Json json() const;
+    
+    std::array<Endpoint, 2> endpoints;
   };
  
   // Neighbor ------------------------------------------------------------------

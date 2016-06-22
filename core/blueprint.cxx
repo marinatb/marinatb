@@ -4,6 +4,7 @@
 #include <limits>
 #include <vector>
 #include <algorithm>
+#include <experimental/optional>
 #include <fmt/format.h>
 #include <arpa/inet.h>
 #include "3p/pipes/pipes.hxx"
@@ -25,6 +26,8 @@ using std::pair;
 using std::find_if;
 using std::remove_if;
 using std::ostream;
+using std::experimental::optional;
+using std::experimental::make_optional;
 
 using namespace marina;
 using namespace pipes;
@@ -152,58 +155,30 @@ Blueprint::NetworkMap & Blueprint::networks() const
 }
 
 
+vector<Endpoint> Blueprint::neighbors(const Endpoint & e)
+{
+  return
+  _->links
+    | collect([&e](const Link & x)
+      {
+        if(x.endpoints[0].id == e.id) return make_optional(x.endpoints[1]);
+        if(x.endpoints[1].id == e.id) return make_optional(x.endpoints[0]);
+        return optional<Endpoint>{};
+      });
+}
+
 vector<Network> Blueprint::connectedNetworks(const Computer c)
 {
-  vector<Network> result;
-  for(const auto & p : c.interfaces())
-  {
-    const Interface & i = p.second;
-    for(const Link & l : _->links)
-    {
-      if(l.endpoints[0].mac && *l.endpoints[0].mac == i.mac())
+  return
+  neighbors(Endpoint{c.id()})
+    | collect([this,&c](const Endpoint & e)
       {
-        Network n = getNetworkById(l.endpoints[1].id);
-        //TODO gross make this a set
-        if(find_if(result.begin(), result.end(), [&n](const Network & x){
-              return n.name() == x.name();
-              }) == result.end())
-        {
-          result.push_back(n); 
-        }
-      }
-      if(l.endpoints[1].mac && l.endpoints[1].mac == i.mac())
-      {
-        Network n = getNetworkById(l.endpoints[0].id);
-        if(find_if(result.begin(), result.end(), [&n](const Network & x){
-              return n.name() == x.name();
-              }) == result.end())
-        {
-          result.push_back(n); 
-        }
-      }
-    }
-  }
-  return result;
+        auto i = networks().find(e.id);
+        if(i != networks().end()) return make_optional(i->second);
+        return optional<Network>{};
+      });
 }
      
-/*
-vector<Computer> Blueprint::connectedComputers(const Network n)
-{
-  vector<Computer> result;
-
-  for(const Link & l : _->links)
-  {
-    if(l.endpoints[0] == n.guid())
-    {
-      Computer c = getComputerByMac(l.endpoints[1]);
-
-    }
-  }
-
-  return result;
-}
-*/
-
 Computer & Blueprint::getComputer(string name) const 
 { 
   auto i = find_if(_->computers.begin(), _->computers.end(),
@@ -744,16 +719,6 @@ Json IpV4Address::json() const
 }
 
 // Network ---------------------------------------------------------------------
-size_t Network_Guid_Hash::operator() (const Network &c) const
-{
-  return UuidHash{}(c.id());
-}
-
-bool Network_Guid_Cmp::operator() (const Network &a, const Network &b) const
-{
-  Network_Guid_Hash h{};
-  return h(a) == h(b);
-}
 
 Network::Network(string name)
   : _{new Network_{name}}
@@ -1111,17 +1076,6 @@ HwSpec marina::operator- (HwSpec a, HwSpec b)
 }
 
 // Computer --------------------------------------------------------------------
-
-size_t Computer_Guid_Hash::operator() (const Computer &c) const
-{
-  return UuidHash{}(c.id());
-}
-
-bool Computer_Guid_Cmp::operator() (const Computer &a, const Computer &b) const
-{
-  Computer_Guid_Hash h{};
-  return h(a) == h(b);
-}
 
 Computer::Computer(string name)
   : _{new Computer_{name}}
