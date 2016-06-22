@@ -158,11 +158,23 @@ vector<Network> Blueprint::connectedNetworks(const Computer c)
 {
   return
   neighbors(Endpoint{c.id()})
-    | collect([this,&c](const Endpoint & e)
+    | collect([this](const Endpoint & e)
       {
         auto i = networks().find(e.id);
         if(i != networks().end()) return make_optional(i->second);
         return optional<Network>{};
+      });
+}
+
+vector<Computer> Blueprint::connectedComputers(const Network n)
+{
+  return
+  neighbors(Endpoint{n.id()})
+    | collect([this](const Endpoint & e)
+      {
+        auto i = computers().find(e.id);
+        if(i != computers().end()) return make_optional(i->second);
+        return optional<Computer>{};
       });
 }
      

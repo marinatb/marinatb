@@ -285,16 +285,13 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
   for(auto nw : b.networks())
   {
     unordered_map<Switch, size_t, SwitchSetHash, SwitchSetCMP> swc;
-    //TODO using link interface
-    /*
-    for(auto nbr : nw.second.connections())
+    auto cxs = b.connectedComputers(nw.second);
+    for(const Computer & c : cxs)
     {
-      auto c = b.getComputerByMac(nbr.id);  
       auto he = e.getEmbedding(c);
       auto sws = tt.connectedSwitches(he.host);
       for(auto s : sws) swc[s]++;
     }
-    */
 
     for(auto p : swc)
     {

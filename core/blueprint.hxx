@@ -50,7 +50,9 @@ namespace marina
 
       std::vector<Endpoint> neighbors(const Endpoint &);
       
+      //convenience functions
       std::vector<Network> connectedNetworks(const Computer);
+      std::vector<Computer> connectedComputers(const Network);
       Computer & getComputer(std::string name) const;
       Network & getNetwork(std::string name) const;
       Network getNetworkById(const Uuid & id) const;
