@@ -51,6 +51,9 @@ int main()
   
   srv.onPost( "/materialization/topo", 
       relay("access", "/materialization/topo") );
+  
+  srv.onPost( "/materialization/status", 
+      relay("access", "/materialization/status") );
 
   srv.run();
 }

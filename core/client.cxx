@@ -52,6 +52,8 @@ R"({A}usage: {X}marina {P}cmd{N}
    {C}testbed control
    {X}tcc {P}source{N}      {C}compile a testbed topology{N}
    {X}topo {P}topology{N}   {C}set the testbed topology
+   {X}status                {C}brief status of the testbed
+   {X}dump                  {C}detailed status of the testbed
 {N})",
   fmt::arg("A", ATTN),
   fmt::arg("C", COMMENT),
@@ -176,6 +178,7 @@ void* compileSrc(string src)
         "clang++ "
         "-stdlib=libc++ -std=c++14 -fPIC -shared "
         "-I{mrsrc} -I/usr/local/include/c++/v1 "
+        "-L/usr/local/lib "
         "{src} "
         "-o {out}",
         fmt::arg("src", src),
@@ -373,6 +376,35 @@ void topo(string tid)
   }
 }
 
+TestbedTopology getTopo()
+{
+  HttpRequest rq{
+    HTTPMethod::POST,
+    "https://api/materialization/status",
+    "{}"
+  };
+  auto res = rq.response().get();
+  if(res.msg->getStatusCode() != 200)
+  {
+    cerr << "failed to get testbed data" << endl;
+    exit(1);
+  }
+
+  Json j = extract(res.bodyAsJson(), "topo", "status-request");
+  return TestbedTopology::fromJson(j);
+}
+
+void status()
+{
+  //cout << getTopo().quickStatus() << endl;
+  cout << "the muffin man will own your soul" << endl;
+}
+
+void dump()
+{
+  cout << getTopo().json().dump(2) << endl;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -433,6 +465,14 @@ int main(int argc, char **argv)
   {
     if(argc != 4) fail();
     ssh(argv[2], argv[3]);
+  }
+  else if(cmd == "status")
+  {
+    status();
+  }
+  else if(cmd == "dump")
+  {
+    dump();
   }
   else fail();
 }

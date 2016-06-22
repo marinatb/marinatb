@@ -22,7 +22,7 @@ Blueprint marina::mars()
     .cores(4)
     .add_ifx("ifx0", 1_gbps);
 
-  m.connect(c.ifx("ifx0"), phobos);
+  m.connect({c, c.ifx("ifx0")}, phobos);
 
   c =
   m.computer("cortana")
@@ -31,7 +31,7 @@ Blueprint marina::mars()
     .cores(4)
     .add_ifx("ifx0", 1_gbps);
   
-  m.connect(c.ifx("ifx0"), phobos);
+  m.connect({c, c.ifx("ifx0")}, phobos);
 
   //deimos network -------------------------------------------------------------
   auto deimos =
@@ -44,7 +44,7 @@ Blueprint marina::mars()
   {
     auto c =
     m.computer(name).os(os).cores(cores).memory(mem).add_ifx("ifx0", 1_gbps);
-    m.connect(c.ifx("ifx0"), deimos);
+    m.connect({c, c.ifx("ifx0")}, deimos);
   };
 
   dcomp("wolf", "ubuntu-server-15.10", 12, 16_gb);

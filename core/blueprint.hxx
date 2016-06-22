@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <3p/json/src/json.hpp>
+#include <core/util.hxx>
 
 namespace marina
 {
@@ -14,54 +15,47 @@ namespace marina
   class Network;
   class Computer;
   class Interface;
-  using Json = nlohmann::json; 
-  
-  struct Link
-  {
-    Link() = default;
-    Link(Interface, Interface);
-    Link(std::string, std::string);
-    static Link fromJson(Json);
-
-    Json json() const;
-    
-    std::array<std::string, 2> endpoints;
-  };
-
+  struct Link;
 
   // Blueprint -----------------------------------------------------------------
   class Blueprint
   {
     public:
+
+      //types
+      using ComputerMap = std::unordered_map<Uuid, Computer, UuidHash, UuidCmp>;
+      using NetworkMap = std::unordered_map<Uuid, Network, UuidHash, UuidCmp>;
+
+      //ctors
       Blueprint(std::string);
-      static Blueprint fromJson(Json);
 
       //name
       std::string name() const;
       Blueprint & name(std::string);
 
+      //TODO XXX
       //the project this blueprint is assigned to, may be empty initially
       std::string project() const;
       Blueprint & project(std::string);
 
-      //id a UUID that uniquely identifies this blueprint in the universe of
-      //all possible blueprints
-      std::string id() const;
+      //universally unique identifier
+      Uuid id() const;
 
       //component constructors
       Network network(std::string name);
       Computer computer(std::string name);
 
-      //component access
-      //TODO transition the underlying data structure to a map from a set
-      //and provide a call that returns a const refrerence to the set here
-      std::vector<Computer> computers() const;
-      std::vector<Network> networks() const;
+      ComputerMap & computers() const;
+      NetworkMap & networks() const;
+
+      std::vector<Endpoint> neighbors(const Endpoint &);
+      
+      //convenience functions
       std::vector<Network> connectedNetworks(const Computer);
-      //std::vector<Computer> connectedComputers(const Network);
+      std::vector<Computer> connectedComputers(const Network);
       Computer & getComputer(std::string name) const;
       Network & getNetwork(std::string name) const;
-      Network getNetworkById(std::string id) const;
+      Network getNetworkById(const Uuid & id) const;
       Computer getComputerByMac(std::string mac) const;
 
       //component removal
@@ -70,12 +64,15 @@ namespace marina
 
       //component connection
       const std::vector<Link> & links() const;
-      void connect(Interface, Network);
+      void connect(std::pair<Computer, Interface>, Network);
       void connect(Network, Network);
 
+      //TODO XXX
       //embedding
       Blueprint localEmbedding(std::string host_id);
 
+      //serialization
+      static Blueprint fromJson(Json);
       Json json() const;
 
       Blueprint clone() const;
@@ -83,26 +80,23 @@ namespace marina
     private:
       std::shared_ptr<struct Blueprint_> _;
   };
- 
-  // Neighbor ------------------------------------------------------------------
-  struct Neighbor
-  {
-    enum class Kind { Network, Computer };
 
-    Neighbor(Kind k, std::string id/*, Blueprint bp*/);
-    static Neighbor fromJson(Json);
+  // Link ----------------------------------------------------------------------
+  
+  struct Link
+  {
+    Link() = default;
+    Link(std::pair<Computer,Interface>, Network);
+    Link(Network, std::pair<Computer,Interface>);
+    Link(Network, Network);
+
+    static Link fromJson(Json);
 
     Json json() const;
     
-    Kind kind;
-    std::string id;
-    //Blueprint bp;
+    std::array<Endpoint, 2> endpoints;
   };
-
-  template <class T>
-  T as(const Neighbor &);
-
-
+ 
   bool operator== (const Blueprint &, const Blueprint &);
   bool operator!= (const Blueprint &, const Blueprint &);
   
@@ -227,9 +221,10 @@ namespace marina
       const Latency latency() const;
       Network & latency(Latency);
 
-      std::string guid() const;
+      //std::string guid() const;
+      Uuid id() const;
 
-      const std::vector<Neighbor> & connections() const;
+      //const std::vector<Neighbor> & connections() const;
 
       EmbeddingInfo & einfo() const;
 
@@ -349,6 +344,9 @@ namespace marina
 
       Computer(std::string name);
       static Computer fromJson(Json);
+      
+      //std::string guid() const;
+      const Uuid & id() const;
 
       //name
       std::string name() const;

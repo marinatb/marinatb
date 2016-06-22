@@ -6,8 +6,10 @@
 #include <string>
 #include <mutex>
 #include <functional>
+#include <experimental/optional>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <uuid/uuid.h>
 #include "3p/json/src/json.hpp"
 #include "common/net/proto.hxx"
 #include "common/net/http_server.hxx"
@@ -15,6 +17,37 @@
 namespace marina {
 
 using Json = nlohmann::json; 
+
+struct Uuid
+{
+  Uuid();
+
+  std::string str() const;
+  Json json() const;
+  static Uuid fromJson(const Json &j);
+  
+  uuid_t id;
+  
+};
+
+bool operator==(const Uuid &, const Uuid &);
+bool operator!=(const Uuid &, const Uuid &);
+
+struct UuidHash
+{
+  size_t operator()(const Uuid &u) const
+  {
+    return std::hash<std::string>{}(u.str());
+  }
+};
+
+struct UuidCmp
+{
+  bool operator()(const Uuid &a, const Uuid &b) const
+  {
+    return uuid_compare(a.id, b.id);
+  }
+};
 
 template <class T, class F>
 inline
@@ -35,6 +68,15 @@ std::vector<Json> jtransform(const std::unordered_map<std::string, T> & xs)
   );
 }
 
+template <class T>
+inline
+std::vector<Json> jtransform(const std::unordered_map<Uuid, T, UuidHash, UuidCmp> & xs)
+{
+  return jtransform(xs,
+    [](const std::pair<Uuid,T> & p){ return p.second.json(); } 
+  );
+}
+
 template <class C>
 inline
 std::vector<Json> jtransform(const C & xs)
@@ -44,8 +86,23 @@ std::vector<Json> jtransform(const C & xs)
   );
 }
 
+
+struct Endpoint
+{
+  Endpoint() = default;
+  Endpoint(Uuid);
+  Endpoint(Uuid, std::experimental::optional<std::string>);
+
+  Uuid id;
+  std::experimental::optional<std::string> mac;
+
+  Json json() const;
+  static Endpoint fromJson(const Json &);
+};
+
+bool operator==(const Endpoint &, const Endpoint &);
+
 std::string generate_mac();
-std::string generate_guid();
 
 std::function<http::Response(http::Message)> 
 jsonIn(std::function<http::Response(Json)>);
@@ -71,7 +128,12 @@ class LinearIdCacheMap
     Value create(Key key)
     {
       lk_.lock();
-      if(m_.find(key) != m_.end()) return m_.at(key);
+      if(m_.find(key) != m_.end()) 
+      {
+        auto v = m_.at(key);
+        lk_.unlock();
+        return v;
+      }
       lk_.unlock();
 
       return m_[key] = v_++;
@@ -83,6 +145,13 @@ class LinearIdCacheMap
       Value v = m_.at(key);
       lk_.unlock();
       return v;
+    }
+
+    void erase(Key key)
+    {
+      lk_.lock();
+      m_.erase(key);
+      lk_.unlock();
     }
 
   private:

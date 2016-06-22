@@ -37,7 +37,7 @@ TestbedTopology marina::deter2015()
            .disk(200_gb) 
            .add_ifx("ethX", 6_gbps); //TODO XXX
 
-         t.connect(c, mc_switches[x/32], 6_gbps); });
+         t.connect({c, c.ifx("ethX")}, mc_switches[x/32], 6_gbps); });
 
   //hp ************************
   //switches
@@ -57,7 +57,7 @@ TestbedTopology marina::deter2015()
           .disk(1_tb)
           .add_ifx("ethX", 20_gbps); //TODO XXX
 
-        t.connect(c, hp_switches[x/22], 20_gbps); });
+        t.connect({c, c.ifx("ethX")}, hp_switches[x/22], 20_gbps); });
 
   //pc2133 ********************
   //switches
@@ -79,7 +79,7 @@ TestbedTopology marina::deter2015()
           .disk(250_gb)
           .add_ifx("ethX", 4_gbps); //TODO XXX
 
-        t.connect(c, pc2133_switches[x/27], 4_gbps); });
+        t.connect({c, c.ifx("ethX")}, pc2133_switches[x/27], 4_gbps); });
 
   //pc 3060 *******************
   //switch
@@ -95,7 +95,7 @@ TestbedTopology marina::deter2015()
             .disk(36_gb)
           .add_ifx("ethX", 4_gbps); //TODO XXX
 
-        t.connect(c, pc3060_switch, 5_gbps); });
+        t.connect({c, c.ifx("ethX")}, pc3060_switch, 5_gbps); });
 
 
   return t;
