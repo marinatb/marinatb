@@ -104,6 +104,9 @@ http::Response construct(Json j)
 
       //set interface ip addresses
       IpV4Address a = n.ipv4();
+
+      //TODO using link interface
+      /*
       for(const Neighbor & nbr : n.connections())
       {
         if(nbr.kind != Neighbor::Kind::Computer) continue;
@@ -116,6 +119,7 @@ http::Response construct(Json j)
 
         a++;
       }
+      */
     }
 
     //call out to all of the selected materialization hosts asking them to 

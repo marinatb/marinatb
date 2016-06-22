@@ -61,9 +61,8 @@ namespace marina
     Bandwidth bandwidth{100_mbps};
     Latency latency{0_ms};
     IpV4Address ipv4space{"10.10.0.0", 16};
-    //unordered_map<string, Interface> interfaces;
     Uuid id;
-    vector<Neighbor> connections;
+    //vector<Neighbor> connections;
     Network::EmbeddingInfo einfo;
   };
 
@@ -134,23 +133,11 @@ Computer Blueprint::computer(string name)
 
 Blueprint::ComputerMap & Blueprint::computers() const
 {
-  /*
-  vector<Computer> cs;
-  cs.reserve(_->computers.size());
-  for(auto & p : _->computers) cs.push_back(p.second);
-  return cs;
-  */
   return _->computers;
 }
 
 Blueprint::NetworkMap & Blueprint::networks() const
 {
-  /*
-  vector<Network> ns;
-  ns.reserve(_->computers.size());
-  for(auto & p : _->networks) ns.push_back(p.second);
-  return ns;
-  */
   return _->networks;
 }
 
@@ -272,48 +259,15 @@ const vector<Link> & Blueprint::links() const
 
 void Blueprint::connect(pair<Computer,Interface> c, Network n)
 {
-  //_->links.push_back({i, n.add_ifx()});
   _->links.push_back({c, n});
-
-  //TODO kill redundancy with links
-  /*
-  n._->connections.push_back(
-    Neighbor{
-      Neighbor::Kind::Computer,
-      i.mac()//,
-      // *this
-    }
-  );
-  */
 }
 
 void Blueprint::connect(Network a, Network b)
 {
-  //_->links.push_back({a.add_ifx(), b.add_ifx()});
   _->links.push_back({a,b});
-
-  //TODO kill redundancy with links
-  /*
-  a._->connections.push_back(
-    Neighbor{
-      Neighbor::Kind::Network,
-      b.guid()//,
-     // *this
-    }
-  );
-  
-  b._->connections.push_back(
-    Neighbor{
-      Neighbor::Kind::Network,
-      a.guid()//,
-    //  *this
-    }
-  );
-  */
-
 }
 
-Blueprint Blueprint::localEmbedding(string host_id)
+Blueprint Blueprint::localEmbedding(string /*host_id*/)
 {
   /*
   Blueprint b{name()};
@@ -363,10 +317,8 @@ Blueprint Blueprint::clone() const
   for(auto x : _->networks)
     m._->networks.insert_or_assign(x.first, x.second.clone());
 
-
   for(auto x : _->computers)
     m._->computers.insert_or_assign(x.first, x.second.clone());
-  //for(auto x : _->computers) m._->computers.insert(x.clone());
 
   m._->links = _->links; //not a pointer based data structure
   return m;
@@ -394,7 +346,6 @@ Blueprint Blueprint::fromJson(Json j)
   for(Json & cj : computers)
   {
     Computer c = Computer::fromJson(cj);
-    //bp._->computers.insert(c);
     bp._->computers.insert_or_assign(c.id(), c);
   }
 
@@ -426,20 +377,6 @@ bool marina::operator== (const Blueprint &a, const Blueprint &b)
 
   auto compare = [](auto &xs, auto &ys)
   {
-    /*
-    auto sorter =
-      [](const auto &x, const auto &y) { return x.name() < y.name(); };
-      */
-
-    //sort(xs.begin(), xs.end(), sorter);
-    //sort(ys.begin(), ys.end(), sorter);
-
-    /*
-    for(size_t i=0; i<xs.size(); ++i)
-    {
-      if(xs[i] != ys[i]) return false;
-    }
-    */
     for(const auto & x : xs)
     {
 
@@ -453,16 +390,11 @@ bool marina::operator== (const Blueprint &a, const Blueprint &b)
 
   if(!compare(acs, bcs)) return false;
 
-  //TODO lazer muffins
-
-  /*
-  vector<Network> ans = a.networks(),
-                  bns = b.networks();
+  auto ans = a.networks(),
+       bns = b.networks();
 
   if(ans.size() != bns.size()) return false;
   if(!compare(ans, bns)) return false;
-  */
-  
 
   return true;
 }
@@ -471,40 +403,6 @@ bool marina::operator!= (const Blueprint &a, const Blueprint &b)
 {
   return !(a == b);
 }
-
-//Neighbor ---------------------------------------------------------------------
-Neighbor::Neighbor(Kind k, std::string id/*, Blueprint bp*/) 
-  : kind{k}, 
-    id{id}//,
-    //bp{bp}
-{}
-
-Neighbor Neighbor::fromJson(Json j)
-{
-  string kind = extract(j, "kind", "neighbor");
-  string id = extract(j, "id", "neighbor");
-
-  Kind kind_;
-  if(kind == "Network") kind_ = Kind::Network;
-  else if(kind == "Computer") kind_ = Kind::Computer;
-  else throw runtime_error{fmt::format("unknown neighbor kind '{}'", kind)};
-
-  return Neighbor{kind_, id};
-}
-
-Json Neighbor::json() const
-{
-  Json j;
-  switch(kind)
-  {
-    case Kind::Network: j["kind"] = "Network";
-    case Kind::Computer: j["kind"] = "Computer";
-  }
-  j["id"] = id;
-
-  return j;
-}
-
 
 // Bandwidth -------------------------------------------------------------------
 Bandwidth::Bandwidth(size_t size, Unit unit)
@@ -762,11 +660,6 @@ Uuid Network::id() const
   return _->id;
 }
 
-const vector<Neighbor> & Network::connections() const
-{
-  return _->connections;
-}
-
 Network::EmbeddingInfo & Network::einfo() const
 {
   return _->einfo;
@@ -778,13 +671,6 @@ Network Network::fromJson(Json j)
   Network n{name};
   n.latency(Latency::fromJson(extract(j, "latency", "network")));
   n.capacity(Bandwidth::fromJson(extract(j, "capacity", "network")));
-
-  Json cnxs = extract(j, "connections", "network");
-  for(const Json & cnx : cnxs)
-  {
-    Neighbor nbr = Neighbor::fromJson(cnx);
-    n._->connections.push_back(nbr);
-  }
 
   n._->id = Uuid::fromJson(extract(j, "id", "network"));
 
@@ -809,7 +695,6 @@ Json Network::json() const
   j["name"] = name();
   j["latency"] = latency().json();
   j["capacity"] = capacity().json();
-  j["connections"] = jtransform(_->connections);
   j["ipv4"] = ipv4().json();
   j["id"] = _->id.json();
   j["einfo"]["vni"] = _->einfo.vni;
@@ -1313,15 +1198,6 @@ Json Computer::EmbeddingInfo::json()
 
 
 // Link ------------------------------------------------------------------------
-/*
-Link::Link(Interface a, Interface b)
-  : endpoints{{a.mac(), b.mac()}}
-{}
-
-Link::Link(string a, string b)
-  : endpoints{{a, b}}
-{}
-*/
 
 Link::Link(pair<Computer,Interface> c, Network n)
 {

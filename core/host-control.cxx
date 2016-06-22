@@ -498,6 +498,8 @@ void launchNetworks(const Blueprint & bp)
   {
     const Network & n = p.second;
     createNetworkBridge(n);
+    //TODO using link interface
+    /*
     for(const Neighbor & nbr : n.connections())
     {
       if(nbr.kind == Neighbor::Kind::Computer)
@@ -518,6 +520,7 @@ void launchNetworks(const Blueprint & bp)
         }
       }
     }
+    */
   }
 }
 
@@ -626,6 +629,8 @@ void terminateNetworks(const Blueprint & bp)
 
     bridgeId.erase(n.id().str());
     
+    //TODO using link interface
+    /*
     for(const Neighbor & nbr : n.connections())
     {
       if(nbr.kind == Neighbor::Kind::Computer)
@@ -633,6 +638,7 @@ void terminateNetworks(const Blueprint & bp)
         vhostId.erase(nbr.id); 
       }
     }
+    */
   }
 }
 

@@ -95,25 +95,6 @@ namespace marina
     std::array<Endpoint, 2> endpoints;
   };
  
-  // Neighbor ------------------------------------------------------------------
-  struct Neighbor
-  {
-    enum class Kind { Network, Computer };
-
-    Neighbor(Kind k, std::string id/*, Blueprint bp*/);
-    static Neighbor fromJson(Json);
-
-    Json json() const;
-    
-    Kind kind;
-    std::string id;
-    //Blueprint bp;
-  };
-
-  template <class T>
-  T as(const Neighbor &);
-
-
   bool operator== (const Blueprint &, const Blueprint &);
   bool operator!= (const Blueprint &, const Blueprint &);
   
@@ -241,7 +222,7 @@ namespace marina
       //std::string guid() const;
       Uuid id() const;
 
-      const std::vector<Neighbor> & connections() const;
+      //const std::vector<Neighbor> & connections() const;
 
       EmbeddingInfo & einfo() const;
 
