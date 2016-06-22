@@ -48,9 +48,9 @@ TEST_CASE("hi-marina-construct", "[api-mzn-up]")
   Json minfo = svcRequest("materialization", "info", rq);
   Blueprint bp = Blueprint::fromJson(minfo);
 
-  for(Computer & c : bp.computers())
+  for(const auto & c : bp.computers())
   {
-    Computer::EmbeddingInfo e = c.embedding();
+    Computer::EmbeddingInfo e = c.second.embedding();
     REQUIRE( e.host != "goblin" );
     REQUIRE( e.assigned == true );
   }

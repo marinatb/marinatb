@@ -196,8 +196,8 @@ SwitchEmbedding::SwitchEmbedding(Switch s)
 //EChart ----------------------------------------------------------------------
 EChart::EChart(const TestbedTopology tt)
 {
-  for(auto h : tt.hosts()) hmap.emplace(h);
-  for(auto s : tt.switches()) smap.emplace(s);
+  for(auto h : tt.hosts()) hmap.emplace(h.second);
+  for(auto s : tt.switches()) smap.emplace(s.second);
 }
 
 string EChart::overview()
@@ -234,7 +234,7 @@ HostEmbedding EChart::getEmbedding(Computer c)
       });
 
   if(i != hmap.end()) return *i;
-  else throw out_of_range{c.name()+"("+c.guid()+") not found in echart"};
+  else throw out_of_range{c.name()+"("+c.id().str()+") not found in echart"};
 }
 
 vector<SwitchEmbedding> EChart::getEmbedding(Network n)
@@ -253,6 +253,7 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
 {
   //sort the computers so we embed the 'lightest' first
   auto cs = b.computers() 
+    | map<vector>([](auto x) { return x.second; })
     | sort([](auto x, auto y){ return x.hwspec().norm() < y.hwspec().norm(); });
 
   for(auto c : cs)
@@ -284,7 +285,7 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
   for(auto nw : b.networks())
   {
     unordered_map<Switch, size_t, SwitchSetHash, SwitchSetCMP> swc;
-    for(auto nbr : nw.connections())
+    for(auto nbr : nw.second.connections())
     {
       auto c = b.getComputerByMac(nbr.id);  
       auto he = e.getEmbedding(c);
@@ -301,7 +302,7 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
           throw runtime_error{"unknown switch: " + p.first.name()};
 
         SwitchEmbedding swe = *i;
-        swe.networks.insert(nw);
+        swe.networks.insert(nw.second);
         e.smap.erase(swe);
         e.smap.insert(swe);
       }
@@ -313,20 +314,20 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
 
 EChart marina::unembed(Blueprint bp, EChart ec)
 {
-  for(const Computer & c : bp.computers())
+  for(const auto & c : bp.computers())
   {
-    auto e = ec.getEmbedding(c);  
-    e.machines.erase(c);
+    auto e = ec.getEmbedding(c.second);
+    e.machines.erase(c.second);
     ec.hmap.erase(e);
     ec.hmap.insert(e);
   }
   
-  for(const Network & n : bp.networks())
+  for(const auto & n : bp.networks())
   {
-    auto es = ec.getEmbedding(n);
+    auto es = ec.getEmbedding(n.second);
     for(auto e : es) 
     {
-      e.networks.erase(n);
+      e.networks.erase(n.second);
       ec.smap.erase(e);
       ec.smap.insert(e);
     }

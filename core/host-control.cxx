@@ -189,7 +189,7 @@ void initQemuKvm()
 
 inline string xpdir(const Blueprint & bp)
 {
-  return fmt::format("/space/xp/{}", bp.id());
+  return fmt::format("/space/xp/{}", bp.id().str());
 }
 
 void plopLinuxConfig(const Computer & c, string dst, string img)
@@ -419,7 +419,7 @@ void launchVm(const Computer & c, const Blueprint & bp)
 void createNetworkBridge(const Network & n)
 {
   //create a bridge for the network
-  size_t net_id = bridgeId.create(n.guid());
+  size_t net_id = bridgeId.create(n.id().str());
 
   string br_id = fmt::format("mrtb-vbr-{}", net_id);
 
@@ -459,7 +459,7 @@ void createNetworkBridge(const Network & n)
 
 void createComputerPort(const Network & n, string id)
 {
-  string br_id = fmt::format("mrtb-vbr-{}", bridgeId.get(n.guid()));
+  string br_id = fmt::format("mrtb-vbr-{}", bridgeId.get(n.id().str()));
 
   size_t vhost_id = vhostId.create(id);
   string po_id = fmt::format("mrtb-vhu-{}", vhost_id);
@@ -494,8 +494,9 @@ void initXpDir(const Blueprint & bp)
 
 void launchNetworks(const Blueprint & bp)
 {
-  for(const Network & n : bp.networks()) 
+  for(const auto & p : bp.networks()) 
   {
+    const Network & n = p.second;
     createNetworkBridge(n);
     for(const Neighbor & nbr : n.connections())
     {
@@ -523,20 +524,20 @@ void launchNetworks(const Blueprint & bp)
 void launchComputers(Blueprint & bp)
 {
   using LS = Computer::EmbeddingInfo::LaunchState;
-  for(Computer & c : bp.computers())
+  for(const auto & c : bp.computers())
   {
-    c.embedding().launch_state = LS::Queued;
+    c.second.embedding().launch_state = LS::Queued;
   }
 
   //TODO need to do this more granularly, e.g. just update the launch state
   //because this is an overwriting race between the host controllers
   //db->saveMaterialization(bp.project(), bp.name(), bp.json());
 
-  for(Computer & c : bp.computers())
+  for(const auto & c : bp.computers())
   {
-    c.embedding().launch_state = LS::Launching;
-    launchVm(c, bp);
-    c.embedding().launch_state = LS::Up;
+    c.second.embedding().launch_state = LS::Launching;
+    launchVm(c.second, bp);
+    c.second.embedding().launch_state = LS::Up;
   }
 }
 
@@ -551,7 +552,7 @@ http::Response construct(Json j)
       auto bp = Blueprint::fromJson(j); 
 
       lb_lk.lock();
-      live_blueprints.insert_or_assign(bp.id(), bp);
+      live_blueprints.insert_or_assign(bp.id().str(), bp);
       lb_lk.unlock();
 
       LOG(INFO) 
@@ -566,7 +567,7 @@ http::Response construct(Json j)
 
       LOG(INFO) << fmt::format("{name}({guid}) has been materialized",
             fmt::arg("name", bp.name()),
-            fmt::arg("guid", bp.id())
+            fmt::arg("guid", bp.id().str())
           );
 
     }
@@ -593,34 +594,37 @@ void delXpDir(const Blueprint &bp)
 
 void terminateComputers(const Blueprint & bp)
 {
-  for(const Computer & c : bp.computers())
+  for(const auto & c : bp.computers())
   {
     string cmd = 
       fmt::format("kill `cat /{xpdir}/{name}-qpid`",
         fmt::arg("xpdir", xpdir(bp)),
-        fmt::arg("name", c.name())
+        fmt::arg("name", c.second.name())
       );
     CmdResult cr = exec(cmd);
     if(cr.code != 0) 
       execFail(cr, 
-          fmt::format("failed to terminate computer {}/{}", bp.id(), c.name())
+          fmt::format("failed to terminate computer {}/{}", 
+            bp.id().str(), 
+            c.second.name())
       );
 
-    qkId.erase(c.interfaces().at("cifx").mac());
+    qkId.erase(c.second.interfaces().at("cifx").mac());
    
   }
 }
 
 void terminateNetworks(const Blueprint & bp)
 {
-  for(const Network & n : bp.networks())
+  for(const auto & p : bp.networks())
   {
-    string br_id = fmt::format("mrtb-vbr-{}", bridgeId.get(n.guid()));
+    const Network & n = p.second;
+    string br_id = fmt::format("mrtb-vbr-{}", bridgeId.get(n.id().str()));
     string cmd = fmt::format("ovs-vsctl del-br {}", br_id);
     CmdResult cr = exec(cmd);
     if(cr.code != 0) execFail(cr, "failed to terminate network bridge "+br_id);
 
-    bridgeId.erase(n.guid());
+    bridgeId.erase(n.id().str());
     
     for(const Neighbor & nbr : n.connections())
     {
@@ -647,7 +651,7 @@ http::Response destruct(Json j)
     
     LOG(INFO) << fmt::format("{name}({guid}) has been dematerialized",
           fmt::arg("name", bp.name()),
-          fmt::arg("guid", bp.id())
+          fmt::arg("guid", bp.id().str())
         );
 
     Json r;

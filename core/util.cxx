@@ -18,6 +18,7 @@ using std::invalid_argument;
 using std::runtime_error;
 using std::out_of_range;
 using std::function;
+using std::experimental::optional;
 
 using namespace marina;
 
@@ -35,13 +36,85 @@ string marina::generate_mac()
   return ss.str();
 }
 
-string marina::generate_guid()
+// Uuid -----------------------------------------------------------------------
+
+Uuid::Uuid()
 {
-  uuid_t x;
-  uuid_generate(x);
+  uuid_generate(id);
+}
+
+string Uuid::str() const
+{
   string s(36, '0');
-  uuid_unparse(x, &s[0]);
+  uuid_unparse(id, &s[0]);
   return s;
+}
+
+Json Uuid::json() const
+{
+  Json j;
+  j["id"] = str();
+  return j;
+}
+
+Uuid Uuid::fromJson(const Json &j)
+{
+  Uuid u;
+  string s = extract(j, "id", "uuid");
+  uuid_parse(s.c_str(), u.id);
+  return u;
+}
+
+bool marina::operator==(const Uuid & a, const Uuid & b)
+{
+  return uuid_compare(a.id, b.id);
+}
+
+bool marina::operator!=(const Uuid & a, const Uuid & b)
+{
+  return !(a == b);
+}
+
+// Endpoint --------------------------------------------------------------------
+  
+Endpoint::Endpoint(Uuid id) : id{id} {}
+Endpoint::Endpoint(Uuid id, optional<string> mac) : id{id}, mac{mac} {}
+
+Json Endpoint::json() const
+{
+  Json j;
+  j["id"] = id.json();
+
+  if(mac)
+  {
+    j["mac"] = *mac;
+  }
+  return j;
+}
+
+Endpoint Endpoint::fromJson(const Json &j)
+{
+  Endpoint e;
+  Json id_j = extract(j, "id", "endpoint");
+  e.id = Uuid::fromJson(id_j);
+
+  if(j.find("mac") != j.end())
+  {
+    string mac = extract(j, "mac", "endpoint");
+    e.mac = mac;
+  }
+  return e;
+}
+
+bool marina::operator==(const Endpoint & a, const Endpoint & b)
+{
+  if(a.id != b.id) return false;
+  if(a.mac)
+  {
+    if(!b.mac) return false;
+    if(*a.mac != *b.mac) return false;
+  }
+  return true;
 }
 
 function<http::Response(http::Message)> 

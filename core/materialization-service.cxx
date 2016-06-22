@@ -96,10 +96,11 @@ http::Response construct(Json j)
     //care about such a materialization implementation detail. Maybehapps
     //this could be a place to use riak/redis/memcached @ the host-controller 
     //level
-    for(Network & n : bp.networks())
+    for(auto & p : bp.networks())
     {
+      Network & n = p.second;
       //setup vxlan virtual network identifier
-      n.einfo().vni = db->newVxlanVni(n.guid());
+      n.einfo().vni = db->newVxlanVni(n.id().str());
 
       //set interface ip addresses
       IpV4Address a = n.ipv4();
@@ -192,14 +193,14 @@ http::Response destruct(Json j)
     
     //compute the set of hosts containing computers in this blueprint
     unordered_set<string> hosts;
-    for(const Computer & c : bp.computers()) 
+    for(const auto & c : bp.computers()) 
     {
-      hosts.insert(c.embedding().host);
+      hosts.insert(c.second.embedding().host);
     }
 
-    for(const Network & n : bp.networks())
+    for(const auto & n : bp.networks())
     {
-      db->freeVxlanVni(n.guid());
+      db->freeVxlanVni(n.second.id().str());
     }
    
     //async command to remove computers and networks from relevant hosts

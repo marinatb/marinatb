@@ -55,23 +55,14 @@ namespace marina {
     size_t operator() (const Host &) const;
   };
 
-  /*
-  struct Endpoint
-  {
-    enum class ComponentKind { Host, Switch };
-
-    Endpoint(ComponentKind kind, std::string component_id, std::string mac);
-
-    ComponentKind kind;
-    std::string component_id, mac;
-  };
-  */
-
   class TestbedTopology
   {
     public:
       using SwitchSet = std::unordered_set<Switch, SwitchSetHash, SwitchSetCMP>;
       using HostSet = std::unordered_set<Host, HostSetHash, HostSetCMP>;
+
+      using SwitchMap = std::unordered_map<Uuid, Switch, UuidHash, UuidCmp>;
+      using HostMap = std::unordered_map<Uuid, Host, UuidHash, UuidCmp>;
 
       TestbedTopology(std::string);
 
@@ -79,8 +70,9 @@ namespace marina {
       TestbedTopology & name(std::string);
       static TestbedTopology fromJson(Json);
 
-      SwitchSet & switches() const;
-      HostSet & hosts() const;
+      SwitchMap & switches() const;
+
+      HostMap & hosts() const;
 
       Switch sw(std::string);
       Host host(std::string);
@@ -95,7 +87,7 @@ namespace marina {
       Host getHost(std::string);
 
       void connect(Switch, Switch, Bandwidth);
-      void connect(Host, Switch, Bandwidth);
+      void connect(std::pair<Host, Interface>, Switch, Bandwidth);
 
       Json json() const;
 
@@ -114,11 +106,13 @@ namespace marina {
       static Switch fromJson(Json);
 
       std::vector<Network> & networks() const;
-      void removeNetwork(std::string guid);
+      void removeNetwork(Uuid id);
 
       //name
       std::string name() const;
       Switch & name(std::string);
+
+      const Uuid & id() const;
 
       //std::vector<Host> & connectedHosts(TestbedTopology &) const;
       //std::vector<std::string> connectedHosts() const;
@@ -150,6 +144,8 @@ namespace marina {
       //TODO the const here is a bit disingenuous
       std::vector<Computer> & machines() const;
       void removeMachine(std::string cifx_mac);
+
+      const Uuid & id() const;
       
       //name
       std::string name() const;

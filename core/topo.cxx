@@ -16,6 +16,7 @@ using std::vector;
 using std::array;
 using std::set_difference;
 using std::inserter;
+using std::pair;
 using std::unordered_map;
 using std::remove_if;
 using std::endl;
@@ -81,9 +82,11 @@ bool marina::operator!= (const Host & a, const Host & b)
   return !(a == b);
 }
 
-namespace marina {
+namespace marina 
+{
 
-  struct Endpoint
+  /*
+  struct Endpoint_
   {
     enum class Kind { Host, Switch };
 
@@ -114,9 +117,11 @@ namespace marina {
       return j;
     }
   };
+  */
 
   struct TbLink
   {
+    /*
     TbLink(Switch a, Switch b, Bandwidth capacity)
       : endpoints{{
           {Endpoint::Kind::Switch, a.name()},
@@ -124,11 +129,29 @@ namespace marina {
         }},
         capacity{capacity}
     {}
+    */
+    TbLink(Switch a, Switch b, Bandwidth capacity)
+      : endpoints{{
+          Endpoint{a.id()},
+          Endpoint{b.id()}
+        }},
+        capacity{capacity}
+    {}
 
+    /*
     TbLink(Host a, Switch b, Bandwidth capacity)
       : endpoints{{
           Endpoint{Endpoint::Kind::Host, a.name()},
           Endpoint{Endpoint::Kind::Switch, b.name()}
+        }},
+        capacity{capacity}
+    {}
+    */
+    //TODO remove capacity, not a property of link itself
+    TbLink(pair<Host, Interface> a, Switch b, Bandwidth capacity)
+      : endpoints{{
+          Endpoint{a.first.id(), a.second.mac()},
+          Endpoint{b.id()}
         }},
         capacity{capacity}
     {}
@@ -137,6 +160,7 @@ namespace marina {
       : endpoints{{a, b}},
         capacity{c}
     {}
+
 
     static TbLink fromJson(Json j)
     {
@@ -166,17 +190,20 @@ namespace marina {
     TestbedTopology_(string name) : name{name} {}
 
     string name;
-    unordered_set<Switch, SwitchSetHash, SwitchSetCMP> switches;
-    unordered_set<Host, HostSetHash, HostSetCMP> hosts;
+
+    TestbedTopology::SwitchMap switches;
+
+    TestbedTopology::HostMap hosts;
     vector<TbLink> links;
 
-    void removeEndpointLink(Endpoint::Kind, string name);
+    void removeEndpointLink(const Endpoint &);
   };
 
   struct Switch_
   {
     Switch_(string name) : name{name} {} 
 
+    Uuid id;
     string name;
     Bandwidth backplane;
 
@@ -212,14 +239,14 @@ TestbedTopology TestbedTopology::fromJson(Json j)
   for(Json & hj : hosts)
   {
     Host h = Host::fromJson(hj);
-    t._->hosts.insert(h);
+    t._->hosts.insert_or_assign(h.id(), h);
   }
 
   Json switches = j.at("switches");
   for(Json & sj : switches)
   {
     Switch s = Switch::fromJson(sj);
-    t._->switches.insert(s);
+    t._->switches.insert_or_assign(s.id(), s);
   }
   
   Json links = j.at("links");
@@ -239,13 +266,12 @@ TestbedTopology & TestbedTopology::name(string name)
   return *this;
 }
 
-unordered_set<Switch, SwitchSetHash, SwitchSetCMP> & 
-TestbedTopology::switches() const 
+TestbedTopology::SwitchMap & TestbedTopology::switches() const 
 { 
   return _->switches; 
 }
 
-unordered_set<Host, HostSetHash, HostSetCMP> & TestbedTopology::hosts() const 
+TestbedTopology::HostMap & TestbedTopology::hosts() const 
 { 
   return _->hosts; 
 }
@@ -253,50 +279,64 @@ unordered_set<Host, HostSetHash, HostSetCMP> & TestbedTopology::hosts() const
 Switch TestbedTopology::sw(string name)
 {
   Switch s{name};
-  _->switches.insert(s);
+  _->switches.insert_or_assign(s.id(), s);
   return s;
 }
 
 Switch TestbedTopology::getSw(string name)
 {
   Switch s{name};
-  auto i = _->switches.find(s);
+  auto i = find_if(switches().begin(), switches().end(),
+      [name](const auto & x){ return x.second.name() == name; });
   if(i == _->switches.end())
     throw out_of_range{"switch "+name+" does not exist"};
-  return *i;
+  return i->second;
 }
 
 Host TestbedTopology::getHost(string name)
 {
-  Host s{name};
-  auto i = _->hosts.find(s);
+  auto i = find_if(hosts().begin(), hosts().end(),
+      [name](const auto & h){ return h.second.name() == name; });
   if(i == _->hosts.end())
     throw out_of_range{"host "+name+" does not exist"};
-  return *i;
+  return i->second;
 }
 
 Host TestbedTopology::host(string name)
 {
   Host c{name};
-  _->hosts.insert(c);
+  _->hosts.insert_or_assign(c.id(), c);
   return c;
 }
 
 TestbedTopology::HostSet TestbedTopology::connectedHosts(const Switch s)
 {
   TestbedTopology::HostSet hs;
+  Endpoint e{s.id()};
+
   for(TbLink & l : _->links)
   {
-    if(l.endpoints[0].name == s.name() && 
-       l.endpoints[1].kind == Endpoint::Kind::Host)
+    //if(l.endpoints[0].name == s.name() && 
+    //   l.endpoints[1].kind == Endpoint::Kind::Host)
+    if(l.endpoints[0] == e)
     {
-      hs.insert(getHost(l.endpoints[1].name)); 
+      auto i = hosts().find(l.endpoints[1].id);
+      //auto i = find_if(hosts().begin(), hosts().end(),
+      //    [&e,&l](const Host & h){ return h.id() == l.endpoints[1].id; });
+
+      if(i != hosts().end()) hs.insert(i->second);
+      //hs.insert(getHost(l.endpoints[1].name)); 
     }
     
-    if(l.endpoints[1].name == s.name() && 
-       l.endpoints[0].kind == Endpoint::Kind::Host)
+    //if(l.endpoints[1].name == s.name() && 
+    //   l.endpoints[0].kind == Endpoint::Kind::Host)
+    if(l.endpoints[1] == e)
     {
-      hs.insert(getHost(l.endpoints[0].name)); 
+      auto i = hosts().find(l.endpoints[0].id);
+      //auto i = find_if(hosts().begin(), hosts().end(),
+      //    [&e,&l](const Host & h){ return h.id() == l.endpoints[0].id; });
+      
+      if(i != hosts().end()) hs.insert(i->second);
     }
   }
   return hs;
@@ -305,17 +345,18 @@ TestbedTopology::HostSet TestbedTopology::connectedHosts(const Switch s)
 TestbedTopology::SwitchSet TestbedTopology::connectedSwitches(const Host h)
 {
   TestbedTopology::SwitchSet sws;
+
   for(TbLink & l : _->links)
   {
-    if(l.endpoints[0].name == h.name() &&
-       l.endpoints[1].kind == Endpoint::Kind::Switch)
+    if(l.endpoints[0].id == h.id())
     {
-      sws.insert(getSw(l.endpoints[1].name));
+      auto i = switches().find(l.endpoints[1].id);
+      if(i != switches().end()) sws.insert(i->second);
     }
-    if(l.endpoints[1].name == h.name() &&
-       l.endpoints[0].kind == Endpoint::Kind::Switch)
+    if(l.endpoints[1].id == h.id())
     {
-      sws.insert(getSw(l.endpoints[0].name));
+      auto i = switches().find(l.endpoints[2].id);
+      if(i != switches().end()) sws.insert(i->second);
     }
   }
   return sws;
@@ -326,7 +367,7 @@ void TestbedTopology::connect(Switch a, Switch b, Bandwidth bw)
   _->links.push_back({a, b, bw});
 }
 
-void TestbedTopology::connect(Host a, Switch b, Bandwidth bw)
+void TestbedTopology::connect(pair<Host, Interface> a, Switch b, Bandwidth bw)
 {
   _->links.push_back({a, b, bw});
 }
@@ -341,16 +382,17 @@ Json TestbedTopology::json() const
   return j;
 }
 
-void TestbedTopology_::removeEndpointLink(Endpoint::Kind kind, string name)
+//void TestbedTopology_::removeEndpointLink(Endpoint::Kind kind, string name)
+void TestbedTopology_::removeEndpointLink(const Endpoint & e)
 {
   links.erase(
     remove_if(links.begin(), links.end(),
-      [kind, name](const TbLink & l){ 
+      [&e](const TbLink & l){ 
         Endpoint a = l.endpoints[0],
                  b = l.endpoints[1];
-        return
-        (a.kind == kind && a.name == name) ||
-        (b.kind == kind && b.name == name) ;
+        return a == e || b == e;
+        //(a.kind == kind && a.name == name) ||
+        //(b.kind == kind && b.name == name) ;
     }), links.end()
   );
 
@@ -358,25 +400,39 @@ void TestbedTopology_::removeEndpointLink(Endpoint::Kind kind, string name)
       
 void TestbedTopology::removeSw(string name)
 {
-  auto i = _->switches.erase(Switch{name});
-  if(i == 0) return;
 
-  _->removeEndpointLink(Endpoint::Kind::Switch, name);
+  auto i = find_if(switches().begin(), switches().end(),
+      [name](const auto & x) { return x.second.name() == name; });
+  if(i == switches().end()) throw runtime_error{"unkown switch"};
+
+  Endpoint e{i->first};
+  _->removeEndpointLink(e);
 }
 
 void TestbedTopology::removeHost(string name)
 {
-  auto i = _->hosts.erase(Host{name});
-  if(i == 0) return;
+  //auto i = _->hosts.erase(Host{name});
+  //if(i == 0) return;
+  //_->removeEndpointLink(Endpoint::Kind::Host, name);
+  
+  auto i = find_if(hosts().begin(), hosts().end(),
+      [name](const auto & x) { return x.second.name() == name; });
+  if(i == hosts().end()) throw runtime_error{"unkown host"};
 
-  _->removeEndpointLink(Endpoint::Kind::Host, name);
+  Endpoint e{i->first};
+  _->removeEndpointLink(e);
 }
 
 TestbedTopology TestbedTopology::clone() const
 {
   TestbedTopology t{name()};
-  for(auto & h : _->hosts) t._->hosts.insert(h.clone());
-  for(auto & s : _->switches) t._->switches.insert(s.clone());
+
+  for(auto & h : _->hosts) 
+    t._->hosts.insert_or_assign(h.first, h.second.clone());
+
+  for(auto & s : _->switches) 
+    t._->switches.insert_or_assign(s.first, s.second.clone());
+
   return t;
 }
 
@@ -387,17 +443,17 @@ bool marina::operator == (const TestbedTopology & a, const TestbedTopology & b)
   if(a.switches().size() != b.switches().size()) return false;
   for(const auto & x : a.switches())
   {
-    auto i = b.switches().find(x);
+    auto i = b.switches().find(x.first);
     if(i == b.switches().end()) return false;
-    if(*i != x) return false;
+    if(i->second != x.second) return false;
   }
   
   if(a.hosts().size() != b.hosts().size()) return false;
   for(const auto & x : a.hosts())
   {
-    auto i = b.hosts().find(x);
+    auto i = b.hosts().find(x.first);
     if(i == b.hosts().end()) return false;
-    if(*i != x) return false;
+    if(i->second != x.second) return false;
   }
 
   return true;
@@ -414,6 +470,8 @@ Switch::Switch(string name)
   : _{new Switch_{name}}
 {}
 
+const Uuid & Switch::id() const { return _->id; }
+
 string Switch::name() const { return _->name; }
 Switch & Switch::name(string name)
 {
@@ -426,13 +484,13 @@ vector<Network> & Switch::networks() const
   return _->networks;
 }
 
-void Switch::removeNetwork(std::string guid)
+void Switch::removeNetwork(Uuid id)
 {
   _->networks.erase(
     remove_if(_->networks.begin(), _->networks.end(),
-      [guid](const Network & n)
+      [&id](const Network & n)
       {
-        return n.guid() == guid;
+        return n.id() == id;
       }
     ),
     _->networks.end()
@@ -497,6 +555,8 @@ Switch Switch::clone() const
 Host::Host(string name)
   : _{new Host_{name}}
 {}
+
+const Uuid & Host::id() const { return _->host_comp.id(); }
 
 string Host::name() const { return _->host_comp.name(); }
 Host & Host::name(string name)

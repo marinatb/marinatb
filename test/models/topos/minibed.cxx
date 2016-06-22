@@ -27,7 +27,7 @@ TestbedTopology marina::minibed()
           //sets it up
           .add_ifx("dpdk0", 10_gbps);
 
-        t.connect(c, sw, 24_gbps);
+        t.connect({c, c.ifx("dpdk0")}, sw, 24_gbps);
      });
 
   return t;
