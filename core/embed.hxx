@@ -72,12 +72,28 @@ struct LoadVector
 
 LoadVector operator + (LoadVector, LoadVector);
 
+struct ComputerEmbeddingInfo
+{
+  enum class LaunchState { None, Queued, Launching, Up };
+  LaunchState launchState;
+};
+
+struct InterfaceEmbeddingInfo
+{
+  IpV4Address ipaddr_v4;
+};
+
 struct HostEmbedding
 {
   HostEmbedding(Host);
 
   Host host;
   std::unordered_map<Uuid, Computer, UuidHash, UuidCmp> machines;
+
+  //TODO you are here
+  std::unordered_map<Uuid, ComputerEmbeddingInfo, UuidHash, UuidCmp> machineInfo;
+  std::unordered_map<std::string, InterfaceEmbeddingInfo> ifxInfo;
+
 
   LoadVector load() const;
   HostEmbedding operator+(Computer);

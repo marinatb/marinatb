@@ -186,13 +186,25 @@ http::Response destruct(Json j)
   {
     Blueprint bp = db->fetchMaterialization(project, bpid);
     TestbedTopology topo = db->fetchHwTopo();
+
+    EChart ec{topo}; // = db->fetchEChart();
     
     //compute the set of hosts containing computers in this blueprint
     unordered_set<string> hosts;
     for(const auto & c : bp.computers()) 
     {
+      for(const auto & h : ec.hmap)
+      {
+        if(h.machines.find(c.second.id()) != h.machines.end()) 
+          hosts.insert(h.host.name());
+      }
+    }
+    /*
+    for(const auto & c : bp.computers()) 
+    {
       hosts.insert(c.second.embedding().host);
     }
+    */
 
     for(const auto & n : bp.networks())
     {

@@ -508,11 +508,14 @@ void launchNetworks(const Blueprint & bp)
 
 void launchComputers(Blueprint & bp)
 {
+  //TODO with EChart
+  /*
   using LS = Computer::EmbeddingInfo::LaunchState;
   for(const auto & c : bp.computers())
   {
     c.second.embedding().launch_state = LS::Queued;
   }
+  */
 
   //TODO need to do this more granularly, e.g. just update the launch state
   //because this is an overwriting race between the host controllers
@@ -520,9 +523,11 @@ void launchComputers(Blueprint & bp)
 
   for(const auto & c : bp.computers())
   {
-    c.second.embedding().launch_state = LS::Launching;
+    //TODO with EChart
+    //c.second.embedding().launch_state = LS::Launching;
     launchVm(c.second, bp);
-    c.second.embedding().launch_state = LS::Up;
+    //TODO with EChart
+    //c.second.embedding().launch_state = LS::Up;
   }
 }
 

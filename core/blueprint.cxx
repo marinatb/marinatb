@@ -73,7 +73,7 @@ namespace marina
     string os{"ubuntu-server-15.10"};
     Memory memory{4_gb}, disk{10_gb};
     size_t cores{2};
-    Computer::EmbeddingInfo embedding;
+    //Computer::EmbeddingInfo embedding;
     Uuid id;
 
     unordered_map<string, Interface> interfaces;
@@ -1000,8 +1000,10 @@ Computer Computer::fromJson(Json j)
   c.os(extract(j, "os", "computer"));
   c.memory(Memory::fromJson(extract(j, "memory", "computer")));
   c.cores(extract(j, "cores", "computer"));
+  /*
   c.embedding(Computer::EmbeddingInfo::fromJson(
         extract(j, "embedding", "computer")));
+        */
 
   c._->id = Uuid::fromJson(extract(j, "id", "computer"));
 
@@ -1076,12 +1078,14 @@ Computer & Computer::remove_ifx(string name)
   return *this;
 }
 
+/*
 Computer::EmbeddingInfo & Computer::embedding() const { return _->embedding; }
 Computer & Computer::embedding(Computer::EmbeddingInfo e)
 {
   _->embedding = e;
   return *this;
 }
+*/
 
 HwSpec Computer::hwspec() const
 {
@@ -1104,7 +1108,7 @@ Json Computer::json() const
   j["memory"] = memory().json();
   j["cores"] = cores();
   j["interfaces"] = jtransform(_->interfaces);
-  j["embedding"] = embedding().json();
+  //j["embedding"] = embedding().json();
   j["id"] = id().json();
   return j;
 }
@@ -1116,7 +1120,7 @@ Computer Computer::clone() const
   c._->memory = _->memory;
   c._->cores = _->cores;
   c._->disk = _->disk;
-  c._->embedding = _->embedding;
+  //c._->embedding = _->embedding;
   c._->id = _->id;
 
   for(auto & p : _->interfaces)
@@ -1177,6 +1181,7 @@ bool marina::isLinux(const Computer &)
   return true;
 }
 
+/*
 Computer::EmbeddingInfo::EmbeddingInfo(string h, bool a)
   : host{h},
     assigned{a}
@@ -1217,6 +1222,7 @@ Json Computer::EmbeddingInfo::json()
 
   return j;
 }
+*/
 
 
 

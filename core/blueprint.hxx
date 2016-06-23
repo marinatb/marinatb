@@ -327,6 +327,7 @@ namespace marina
   class Computer
   {
     public:
+      /*
       struct EmbeddingInfo
       {
         enum class LaunchState { None, Queued, Launching, Up };
@@ -341,6 +342,7 @@ namespace marina
 
         Json json();
       };
+      */
 
       Computer(std::string name);
       static Computer fromJson(Json);
@@ -376,8 +378,8 @@ namespace marina
       Interface getInterfaceByMac(std::string) const;
 
       //embedding info
-      EmbeddingInfo & embedding() const;
-      Computer & embedding(EmbeddingInfo);
+      //EmbeddingInfo & embedding() const;
+      //Computer & embedding(EmbeddingInfo);
 
       HwSpec hwspec() const;
 
