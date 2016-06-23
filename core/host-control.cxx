@@ -499,33 +499,10 @@ void launchNetworks(const Blueprint & bp)
   {
     const Network & n = p.second;
     createNetworkBridge(n);
-    //TODO using link interface
     for(auto & p : bp.connectedComputers(n))
     {
       createComputerPort(n, p.second.mac());
     }
-    /*
-    for(const Neighbor & nbr : n.connections())
-    {
-      if(nbr.kind == Neighbor::Kind::Computer)
-      {
-        try
-        { 
-          bp.getComputerByMac(nbr.id);
-          createComputerPort(n, nbr.id);
-        }
-        catch(out_of_range &) 
-        { 
-          // expected that some comps not local
-          LOG(INFO) << fmt::format(
-            "skipping interface generation for remote network connection "
-            "{} -- {}",
-            n.name(), nbr.id
-          );
-        }
-      }
-    }
-    */
   }
 }
 
@@ -634,20 +611,10 @@ void terminateNetworks(const Blueprint & bp)
 
     bridgeId.erase(n.id());
     
-    //TODO using link interface
     for(auto & p : bp.connectedComputers(n))
     {
       vhostId.erase(p.second.mac());
     }
-    /*
-    for(const Neighbor & nbr : n.connections())
-    {
-      if(nbr.kind == Neighbor::Kind::Computer)
-      {
-        vhostId.erase(nbr.id); 
-      }
-    }
-    */
   }
 }
 

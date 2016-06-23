@@ -62,7 +62,6 @@ namespace marina
     Latency latency{0_ms};
     IpV4Address ipv4space{"10.10.0.0", 16};
     Uuid id;
-    //vector<Neighbor> connections;
     Network::EmbeddingInfo einfo;
   };
 

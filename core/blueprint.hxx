@@ -223,11 +223,9 @@ namespace marina
       const Latency latency() const;
       Network & latency(Latency);
 
-      //std::string guid() const;
       Uuid id() const;
 
-      //const std::vector<Neighbor> & connections() const;
-
+      //TODO: XXX
       EmbeddingInfo & einfo() const;
 
       Json json() const;
