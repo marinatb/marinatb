@@ -45,7 +45,7 @@ struct UuidCmp
 {
   bool operator()(const Uuid &a, const Uuid &b) const
   {
-    return uuid_compare(a.id, b.id);
+    return uuid_compare(a.id, b.id) == 0;
   }
 };
 

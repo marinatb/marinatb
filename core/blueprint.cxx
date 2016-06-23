@@ -126,7 +126,7 @@ Network Blueprint::network(string name)
 Computer Blueprint::computer(string name) 
 { 
   Computer c{name};
-  _->computers.emplace(make_pair(c.id(), c));
+  _->computers.insert_or_assign(c.id(), c);
   return c;
 }
 
@@ -178,7 +178,9 @@ Blueprint::connectedComputers(const Network n) const
           if(!e.mac) 
           {
             throw runtime_error{
-              "link between computer and network does not contain mac address"};
+              "link between computer and network does not contain mac address "
+              "computer id: " + e.id.str()
+              };
           }
           auto ifx = i->second.getInterfaceByMac(*e.mac);
           return make_optional(make_pair(i->second, ifx));
@@ -1222,15 +1224,15 @@ Json Computer::EmbeddingInfo::json()
 
 Link::Link(pair<Computer,Interface> c, Network n)
 {
-  endpoints[0] = Endpoint{c.first.id(), c.second.mac()};
-  endpoints[1] = Endpoint{n.id()};
+  endpoints[0] = Endpoint(c.first.id(), c.second.mac());
+  endpoints[1] = Endpoint(n.id());
 }
 Link::Link(Network n, pair<Computer,Interface> c) : Link(c, n) { }
 
 Link::Link(Network a, Network b)
 {
-  endpoints[0] = Endpoint{a.id()};
-  endpoints[1] = Endpoint{b.id()};
+  endpoints[0] = Endpoint(a.id());
+  endpoints[1] = Endpoint(b.id());
 }
 
 Link Link::fromJson(Json j)

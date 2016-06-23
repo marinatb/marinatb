@@ -67,7 +67,7 @@ Uuid Uuid::fromJson(const Json &j)
 
 bool marina::operator==(const Uuid & a, const Uuid & b)
 {
-  return uuid_compare(a.id, b.id);
+  return uuid_compare(a.id, b.id) == 0;
 }
 
 bool marina::operator!=(const Uuid & a, const Uuid & b)
