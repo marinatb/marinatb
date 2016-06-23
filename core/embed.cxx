@@ -286,8 +286,9 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
   {
     unordered_map<Switch, size_t, SwitchSetHash, SwitchSetCMP> swc;
     auto cxs = b.connectedComputers(nw.second);
-    for(const Computer & c : cxs)
+    for(const auto & p : cxs)
     {
+      const Computer & c = p.first;
       auto he = e.getEmbedding(c);
       auto sws = tt.connectedSwitches(he.host);
       for(auto s : sws) swc[s]++;

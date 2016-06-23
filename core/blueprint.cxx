@@ -142,7 +142,7 @@ Blueprint::NetworkMap & Blueprint::networks() const
 }
 
 
-vector<Endpoint> Blueprint::neighbors(const Endpoint & e)
+vector<Endpoint> Blueprint::neighbors(const Endpoint & e) const
 {
   return
   _->links
@@ -154,7 +154,7 @@ vector<Endpoint> Blueprint::neighbors(const Endpoint & e)
       });
 }
 
-vector<Network> Blueprint::connectedNetworks(const Computer c)
+vector<Network> Blueprint::connectedNetworks(const Computer c) const
 {
   return
   neighbors(Endpoint{c.id()})
@@ -166,15 +166,25 @@ vector<Network> Blueprint::connectedNetworks(const Computer c)
       });
 }
 
-vector<Computer> Blueprint::connectedComputers(const Network n)
+vector<pair<Computer,Interface>> 
+Blueprint::connectedComputers(const Network n) const
 {
   return
   neighbors(Endpoint{n.id()})
     | collect([this](const Endpoint & e)
       {
         auto i = computers().find(e.id);
-        if(i != computers().end()) return make_optional(i->second);
-        return optional<Computer>{};
+        if(i != computers().end()) 
+        {
+          if(!e.mac) 
+          {
+            throw runtime_error{
+              "link between computer and network does not contain mac address"};
+          }
+          auto ifx = i->second.getInterfaceByMac(*e.mac);
+          return make_optional(make_pair(i->second, ifx));
+        }
+        return optional<pair<Computer,Interface>>{};
       });
 }
      

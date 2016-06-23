@@ -48,11 +48,13 @@ namespace marina
       ComputerMap & computers() const;
       NetworkMap & networks() const;
 
-      std::vector<Endpoint> neighbors(const Endpoint &);
+      std::vector<Endpoint> neighbors(const Endpoint &) const;
       
       //convenience functions
-      std::vector<Network> connectedNetworks(const Computer);
-      std::vector<Computer> connectedComputers(const Network);
+      std::vector<Network> connectedNetworks(const Computer) const;
+      std::vector<std::pair<Computer, Interface>> 
+      connectedComputers(const Network) const;
+
       Computer & getComputer(std::string name) const;
       Network & getNetwork(std::string name) const;
       Network getNetworkById(const Uuid & id) const;

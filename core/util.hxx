@@ -121,7 +121,7 @@ struct CmdResult
 
 CmdResult exec(std::string cmd);
 
-template <class Key, class Value>
+template <class Key, class Value, class ...TT>
 class LinearIdCacheMap
 {
   public:
@@ -158,7 +158,7 @@ class LinearIdCacheMap
     std::mutex mtx_;
     std::unique_lock<std::mutex> lk_{mtx_, std::defer_lock_t{}};
     Value v_{};
-    std::unordered_map<Key, Value> m_;
+    std::unordered_map<Key, Value, TT...> m_;
 };
 
 struct RtReq

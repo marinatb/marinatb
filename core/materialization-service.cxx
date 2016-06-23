@@ -105,21 +105,13 @@ http::Response construct(Json j)
       //set interface ip addresses
       IpV4Address a = n.ipv4();
 
-      //TODO using link interface
-      /*
-      for(const Neighbor & nbr : n.connections())
+      for( auto & c : bp.connectedComputers(n) )
       {
-        if(nbr.kind != Neighbor::Kind::Computer) continue;
         if(a.netZero()) a++;
-
-        bp.getComputerByMac(nbr.id)
-          .getInterfaceByMac(nbr.id)
-          .einfo()
-          .ipaddr_v4 = a;
-
+        Interface & ifx = c.second;
+        ifx.einfo().ipaddr_v4 = a;
         a++;
       }
-      */
     }
 
     //call out to all of the selected materialization hosts asking them to 
