@@ -97,6 +97,7 @@ struct HostEmbedding
 
   LoadVector load() const;
   HostEmbedding operator+(Computer);
+  HostEmbedding operator-(Computer);
 };
 
 struct SwitchEmbedding

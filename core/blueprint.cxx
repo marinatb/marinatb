@@ -44,7 +44,7 @@ namespace marina
       : name{name}
     {}
 
-    string name, project;
+    string name; //project;
     Uuid id;
 
     Blueprint::ComputerMap computers;
@@ -107,12 +107,14 @@ Blueprint & Blueprint::name(string name)
   return *this;
 }
 
+/*
 string Blueprint::project() const { return _->project; }
 Blueprint & Blueprint::project(string project)
 {
   _->project = project;
   return *this;
 }
+*/
 
 Uuid Blueprint::id() const { return _->id; }
 
@@ -290,9 +292,9 @@ void Blueprint::connect(Network a, Network b)
   _->links.push_back({a,b});
 }
 
-Blueprint Blueprint::localEmbedding(string /*host_id*/)
+/*
+Blueprint Blueprint::localEmbedding(string host_id)
 {
-  /*
   Blueprint b{name()};
   b._->id = _->id;
   b._->project = _->project;
@@ -327,16 +329,15 @@ Blueprint Blueprint::localEmbedding(string /*host_id*/)
   }
 
   return b;
-  */
-  throw runtime_error{"not implemented"};
 }
+*/
 
 Blueprint Blueprint::clone() const
 {
     string project;
   Blueprint m{name()};
   m._->id = _->id;
-  m._->project = _->project;
+  //m._->project = _->project;
   for(auto x : _->networks)
     m._->networks.insert_or_assign(x.first, x.second.clone());
 
@@ -351,7 +352,7 @@ Json Blueprint::json() const
 {
   Json j;
   j["name"] = name();
-  j["project"] = project();
+  //j["project"] = project();
   j["networks"] = jtransform(_->networks);
   j["computers"] = jtransform(_->computers);
   j["links"] = jtransform(_->links);
@@ -363,7 +364,7 @@ Blueprint Blueprint::fromJson(Json j)
 {
   string name = extract(j, "name", "blueprint");
   Blueprint bp{name};
-  bp._->project = extract(j, "project", "blueprint");
+  //bp._->project = extract(j, "project", "blueprint");
   bp._->id = Uuid::fromJson( extract(j, "id", "blueprint") ); 
   Json computers = extract(j, "computers", "blueprint");
   for(Json & cj : computers)

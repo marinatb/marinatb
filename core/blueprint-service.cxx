@@ -68,7 +68,7 @@ http::Response save(Json j)
   try 
   {
     Blueprint bp = Blueprint::fromJson(source);
-    bp.project(project);
+    //bp.project(project);
     db->saveBlueprint(project, bp.json());
     
     Json r;

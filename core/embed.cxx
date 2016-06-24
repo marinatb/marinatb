@@ -185,6 +185,13 @@ HostEmbedding HostEmbedding::operator+(Computer c)
   return x;
 }
 
+HostEmbedding HostEmbedding::operator-(Computer c)
+{
+  HostEmbedding x = *this;
+  x.machines.erase(c.id());
+  return x;
+}
+
 HostEmbedding::HostEmbedding(Host h)
   : host{h}
 {}
@@ -249,37 +256,64 @@ vector<SwitchEmbedding> EChart::getEmbedding(Network n)
   return ses;
 }
 
+HostEmbedding pack(HostEmbedding he, vector<Computer> & cs)
+{
+  while(!cs.empty())
+  {
+    he = he + cs.back();
+    if(he.load().overloaded()) 
+    {
+      he = he - cs.back();
+      break;
+    }
+    cs.pop_back();
+  }
+  return he;
+}
+
 EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
 {
-  //sort the computers so we embed the 'lightest' first
-  auto cs = b.computers() 
-    | map<vector>([](auto x) { return x.second; })
-    | sort([](auto x, auto y){ return x.hwspec().norm() < y.hwspec().norm(); });
 
-  for(auto c : cs)
+  //sort the networks from smallest to largest
+  auto nets = b.networks()
+    | map<vector>([b](const auto &x)
+      { 
+        return make_pair(x.second, b.connectedComputers(x.second)); 
+      })
+    | sort([b](const auto & x, const auto & y)
+      { 
+        return x.second.size() < y.second.size();
+      });
+
+  //create a vector of computers in the above network sorted order
+  vector<Computer> cs;
+  for(const auto & n : nets)
+  {
+    for(const auto & c : n.second)
+    {
+      auto i = find_if(cs.begin(), cs.end(),
+          [c](const auto & ix)
+          {
+            return ix.id() == c.first.id();
+          });
+
+      if(i == cs.end()) cs.push_back(c.first);
+    }
+  }
+
+  while(!cs.empty())
   {
     auto candidates = e.hmap 
-      | map<vector>([c](auto x) { return x + c; })
+      | map<vector>([](auto x) { return x; })
       | sort([](auto x, auto y){ return x.load().norm() < y.load().norm(); });
 
-    auto &chosen = candidates.front();
-
-    if(chosen.load().overloaded())
-    {
-      string msg = fmt::format(
-        "embedding failed \n"
-        "most available host: {} \n"
-        "{}",
-        chosen.host.name(), chosen.load().str()
-      );
-
-      LOG(WARNING) << msg;
-
-      throw runtime_error{msg};
-    }
-
-    e.hmap.erase(chosen);
-    e.hmap.insert(chosen);
+    auto & chosen = candidates.front();
+    size_t before = cs.size();
+    auto packing = pack(chosen, cs);
+    e.hmap.erase(packing);
+    e.hmap.insert(packing);
+    size_t after = cs.size();
+    if(before == after) throw runtime_error{"embedding failed"};
   }
 
   for(auto nw : b.networks())

@@ -122,6 +122,8 @@ http::Response construct(Json j)
     //as it is now all hosts will get embedding commands
     for(const auto & h : embedding.hmap)
     {
+      //TODO with new embedding code
+      /*
       Blueprint lbp = bp.localEmbedding(h.host.name());
 
       replys.push_back(
@@ -134,6 +136,7 @@ http::Response construct(Json j)
         }
         .response()
       );
+      */
     }
 
     // save the embedding to the database
@@ -216,6 +219,8 @@ http::Response destruct(Json j)
     for(const string & h : hosts)
     {
       LOG(INFO) << "destructing " << bp.name() << " on " << h;
+      //TODO with new embedding structure
+      /*
       Blueprint lbp = bp.localEmbedding(h);  
       replys.push_back(
         HttpRequest
@@ -226,6 +231,7 @@ http::Response destruct(Json j)
         }
         .response()
       );
+      */
     }
     
     //TODO: xxx
