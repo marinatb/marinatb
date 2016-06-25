@@ -258,7 +258,7 @@ vector<SwitchEmbedding> EChart::getEmbedding(Network n)
 
 void pack(HostEmbedding & he, vector<Computer> & cs)
 {
-  std::cout << "packing " << he.host.name() << std::endl;
+  std::cout << "packing " << he.host.name() << "| ";
   while(!cs.empty())
   {
     he = he + cs.back();
@@ -267,16 +267,16 @@ void pack(HostEmbedding & he, vector<Computer> & cs)
       he = he - cs.back();
       break;
     }
-    std::cout << cs.back().name() << " packed" << std::endl;
+    std::cout << cs.back().name() << " ";
     cs.pop_back();
   }
-  std::cout << "done packing" << std::endl;
+  std::cout << endl;
 }
 
 EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
 {
 
-  //sort the networks from smallest to largest
+  //sort the networks from largest to smallest
   auto nets = b.networks()
     | map<vector>([b](const auto &x)
       { 
@@ -284,13 +284,14 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
       })
     | sort([b](const auto & x, const auto & y)
       { 
-        return x.second.size() < y.second.size();
+        return x.second.size() > y.second.size();
       });
 
   //create a vector of computers in the above network sorted order
   vector<Computer> cs;
   for(const auto & n : nets)
   {
+    std::cout << "*" << n.first.name() << std::endl;
     for(const auto & c : n.second)
     {
       auto i = find_if(cs.begin(), cs.end(),
@@ -302,6 +303,11 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
       if(i == cs.end()) cs.push_back(c.first);
     }
   }
+
+  //reverse the order for end popping
+  std::reverse(cs.begin(), cs.end());
+
+  for(const auto & x : cs) std::cout << "+"<<x.name() << std::endl;
 
   auto aggLoad = [](const auto & hosts, const auto & hmap)
   {
