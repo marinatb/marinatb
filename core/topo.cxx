@@ -309,7 +309,7 @@ Host TestbedTopology::host(string name)
   return c;
 }
 
-TestbedTopology::HostSet TestbedTopology::connectedHosts(const Switch s)
+TestbedTopology::HostSet TestbedTopology::connectedHosts(const Switch s) const
 {
   TestbedTopology::HostSet hs;
   Endpoint e{s.id()};
@@ -342,7 +342,7 @@ TestbedTopology::HostSet TestbedTopology::connectedHosts(const Switch s)
   return hs;
 }
 
-TestbedTopology::SwitchSet TestbedTopology::connectedSwitches(const Host h)
+TestbedTopology::SwitchSet TestbedTopology::connectedSwitches(const Host h) const
 {
   TestbedTopology::SwitchSet sws;
 

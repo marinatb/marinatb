@@ -158,22 +158,22 @@ LoadVector HostEmbedding::load() const
 }
 
   
-size_t HE_Hash::operator() (const HostEmbedding &h)
+size_t HE_Hash::operator() (const HostEmbedding &h) const
 {
   return HostSetHash{}(h.host);
 }
   
-bool HE_Cmp::operator() (const HostEmbedding &a, const HostEmbedding &b)
+bool HE_Cmp::operator() (const HostEmbedding &a, const HostEmbedding &b) const
 {
   return HostSetCMP{}(a.host, b.host);
 }
   
-size_t SE_Hash::operator() (const SwitchEmbedding &s)
+size_t SE_Hash::operator() (const SwitchEmbedding &s) const
 {
   return SwitchSetHash{}(s.sw);
 }
   
-bool SE_Cmp::operator() (const SwitchEmbedding &a, const SwitchEmbedding &b)
+bool SE_Cmp::operator() (const SwitchEmbedding &a, const SwitchEmbedding &b) const
 {
   return SwitchSetCMP{}(a.sw, b.sw);
 }
@@ -256,8 +256,9 @@ vector<SwitchEmbedding> EChart::getEmbedding(Network n)
   return ses;
 }
 
-HostEmbedding pack(HostEmbedding he, vector<Computer> & cs)
+void pack(HostEmbedding & he, vector<Computer> & cs)
 {
+  std::cout << "packing " << he.host.name() << std::endl;
   while(!cs.empty())
   {
     he = he + cs.back();
@@ -266,9 +267,10 @@ HostEmbedding pack(HostEmbedding he, vector<Computer> & cs)
       he = he - cs.back();
       break;
     }
+    std::cout << cs.back().name() << " packed" << std::endl;
     cs.pop_back();
   }
-  return he;
+  std::cout << "done packing" << std::endl;
 }
 
 EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
@@ -301,20 +303,59 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
     }
   }
 
-  while(!cs.empty())
+  auto aggLoad = [](const auto & hosts, const auto & hmap)
   {
-    auto candidates = e.hmap 
-      | map<vector>([](auto x) { return x; })
-      | sort([](auto x, auto y){ return x.load().norm() < y.load().norm(); });
+    double agg = 
+    hosts
+    | map<vector>([hmap](const auto & x)
+      {
+        return x.load().free_norm();
+      })
+    | reduce(plus);
 
-    auto & chosen = candidates.front();
-    size_t before = cs.size();
-    auto packing = pack(chosen, cs);
-    e.hmap.erase(packing);
-    e.hmap.insert(packing);
-    size_t after = cs.size();
-    if(before == after) throw runtime_error{"embedding failed"};
+    return agg / hosts.size();
+  };
+
+  //sort the switches based on aggregate load
+  auto sws = e.smap
+    | map<vector>([tt,e](const auto & x)
+      {
+        return make_pair(
+            x, 
+            tt.connectedHosts(x.sw) 
+            | map<vector>([e](const auto &x)
+              { 
+                return *e.hmap.find(HostEmbedding{x}); 
+              })
+          );
+      })
+    | sort([e, aggLoad](const auto & x, const auto & y)
+      { 
+        return aggLoad(x.second, e.hmap) < aggLoad(y.second, e.hmap); 
+      });
+
+  //proceed with the embedding in the above switch sorted order
+  for(auto & p : sws)
+  {
+    while(!cs.empty())
+    {
+      sort(p.second.begin(), p.second.end(),
+        [](const auto & x, const auto & y) 
+        { 
+          return x.load().free_norm() > y.load().free_norm();
+        });
+
+      auto & chosen = p.second.front();
+      size_t before = cs.size();
+      pack(chosen, cs);
+      e.hmap.erase(chosen);
+      e.hmap.insert(chosen);
+      size_t after = cs.size();
+      if(before == after) break;
+    }
   }
+
+  if(!cs.empty()) throw runtime_error{"embedding failed"};
 
   for(auto nw : b.networks())
   {

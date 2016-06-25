@@ -19,22 +19,22 @@ struct SwitchEmbedding;
 
 struct HE_Hash
 {
-  size_t operator() (const HostEmbedding &);
+  size_t operator() (const HostEmbedding &) const;
 };
 
 struct HE_Cmp
 {
-  bool operator() (const HostEmbedding &, const HostEmbedding &);
+  bool operator() (const HostEmbedding &, const HostEmbedding &) const;
 };
 
 struct SE_Hash
 {
-  size_t operator() (const SwitchEmbedding &);
+  size_t operator() (const SwitchEmbedding &) const;
 };
 
 struct SE_Cmp
 {
-  bool operator() (const SwitchEmbedding &, const SwitchEmbedding &);
+  bool operator() (const SwitchEmbedding &, const SwitchEmbedding &) const;
 };
   
 struct Load
@@ -60,7 +60,7 @@ struct LoadVector
 
   bool overloaded() const;
   HwSpec used(),
-          total();
+         total();
 
   double norm(),
           inf_norm(),
