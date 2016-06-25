@@ -14,6 +14,7 @@ using std::unordered_map;
 using std::string;
 using std::runtime_error;
 using std::out_of_range;
+using std::reverse;
 using std::stringstream;
 using std::endl;
 using std::ostream;
@@ -258,7 +259,6 @@ vector<SwitchEmbedding> EChart::getEmbedding(Network n)
 
 void pack(HostEmbedding & he, vector<Computer> & cs)
 {
-  std::cout << "packing " << he.host.name() << "| ";
   while(!cs.empty())
   {
     he = he + cs.back();
@@ -267,10 +267,8 @@ void pack(HostEmbedding & he, vector<Computer> & cs)
       he = he - cs.back();
       break;
     }
-    std::cout << cs.back().name() << " ";
     cs.pop_back();
   }
-  std::cout << endl;
 }
 
 EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
@@ -291,7 +289,6 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
   vector<Computer> cs;
   for(const auto & n : nets)
   {
-    std::cout << "*" << n.first.name() << std::endl;
     for(const auto & c : n.second)
     {
       auto i = find_if(cs.begin(), cs.end(),
@@ -305,9 +302,7 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
   }
 
   //reverse the order for end popping
-  std::reverse(cs.begin(), cs.end());
-
-  for(const auto & x : cs) std::cout << "+"<<x.name() << std::endl;
+  reverse(cs.begin(), cs.end());
 
   auto aggLoad = [](const auto & hosts, const auto & hmap)
   {
