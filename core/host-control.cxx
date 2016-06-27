@@ -54,13 +54,14 @@ void initQemuKvm();
  *
  */
 
-LinearIdCacheMap<string, size_t> bridgeId, vhostId, qkId;
+LinearIdCacheMap<Uuid, size_t, UuidHash, UuidCmp> bridgeId;
+LinearIdCacheMap<string, size_t> qkId, vhostId;
 
 /*
  * a map to keep track of the blueprints that are live on this host
  */
 
-unordered_map<string, Blueprint> live_blueprints;
+unordered_map<Uuid, Blueprint, UuidHash, UuidCmp> live_blueprints;
 mutex lb_mtx;
 unique_lock<mutex> lb_lk{lb_mtx, defer_lock_t{}};
 
@@ -419,7 +420,7 @@ void launchVm(const Computer & c, const Blueprint & bp)
 void createNetworkBridge(const Network & n)
 {
   //create a bridge for the network
-  size_t net_id = bridgeId.create(n.id().str());
+  size_t net_id = bridgeId.create(n.id());
 
   string br_id = fmt::format("mrtb-vbr-{}", net_id);
 
@@ -447,8 +448,8 @@ void createNetworkBridge(const Network & n)
     "options:remote_ip={ip} options:key={vni}",
     fmt::arg("id", br_id),
     fmt::arg("vxid", vx_id),
-    fmt::arg("ip", remote_ip),
-    fmt::arg("vni", n.einfo().vni)
+    fmt::arg("ip", remote_ip)
+    //fmt::arg("vni", n.einfo().vni) TODO oldmuffins
   );
 
   cr = exec(cmd);
@@ -457,14 +458,14 @@ void createNetworkBridge(const Network & n)
   LOG(INFO) << fmt::format("{}.vxlan = {}", br_id, vx_id);
 }
 
-void createComputerPort(const Network & n, string id)
+void createComputerPort(const Network & n, string mac)
 {
-  string br_id = fmt::format("mrtb-vbr-{}", bridgeId.get(n.id().str()));
+  string br_id = fmt::format("mrtb-vbr-{}", bridgeId.get(n.id()));
 
-  size_t vhost_id = vhostId.create(id);
+  size_t vhost_id = vhostId.create(mac);
   string po_id = fmt::format("mrtb-vhu-{}", vhost_id);
 
-  LOG(INFO) << fmt::format("{}.uplink = {}", id, po_id);
+  LOG(INFO) << fmt::format("{}.uplink = {}", mac, po_id);
  
   string cmd = fmt::format(
     "ovs-vsctl add-port {bid} {pid} -- set Interface {pid} type=dpdkvhostuser",
@@ -498,39 +499,23 @@ void launchNetworks(const Blueprint & bp)
   {
     const Network & n = p.second;
     createNetworkBridge(n);
-    //TODO using link interface
-    /*
-    for(const Neighbor & nbr : n.connections())
+    for(auto & p : bp.connectedComputers(n))
     {
-      if(nbr.kind == Neighbor::Kind::Computer)
-      {
-        try
-        { 
-          bp.getComputerByMac(nbr.id);
-          createComputerPort(n, nbr.id);
-        }
-        catch(out_of_range &) 
-        { 
-          // expected that some comps not local
-          LOG(INFO) << fmt::format(
-            "skipping interface generation for remote network connection "
-            "{} -- {}",
-            n.name(), nbr.id
-          );
-        }
-      }
+      createComputerPort(n, p.second.mac());
     }
-    */
   }
 }
 
 void launchComputers(Blueprint & bp)
 {
+  //TODO with EChart
+  /*
   using LS = Computer::EmbeddingInfo::LaunchState;
   for(const auto & c : bp.computers())
   {
     c.second.embedding().launch_state = LS::Queued;
   }
+  */
 
   //TODO need to do this more granularly, e.g. just update the launch state
   //because this is an overwriting race between the host controllers
@@ -538,9 +523,11 @@ void launchComputers(Blueprint & bp)
 
   for(const auto & c : bp.computers())
   {
-    c.second.embedding().launch_state = LS::Launching;
+    //TODO with EChart
+    //c.second.embedding().launch_state = LS::Launching;
     launchVm(c.second, bp);
-    c.second.embedding().launch_state = LS::Up;
+    //TODO with EChart
+    //c.second.embedding().launch_state = LS::Up;
   }
 }
 
@@ -555,7 +542,7 @@ http::Response construct(Json j)
       auto bp = Blueprint::fromJson(j); 
 
       lb_lk.lock();
-      live_blueprints.insert_or_assign(bp.id().str(), bp);
+      live_blueprints.insert_or_assign(bp.id(), bp);
       lb_lk.unlock();
 
       LOG(INFO) 
@@ -568,9 +555,9 @@ http::Response construct(Json j)
       launchNetworks(bp);
       launchComputers(bp);
 
-      LOG(INFO) << fmt::format("{name}({guid}) has been materialized",
+      LOG(INFO) << fmt::format("{name}({id}) has been materialized",
             fmt::arg("name", bp.name()),
-            fmt::arg("guid", bp.id().str())
+            fmt::arg("id", bp.id().str())
           );
 
     }
@@ -622,23 +609,17 @@ void terminateNetworks(const Blueprint & bp)
   for(const auto & p : bp.networks())
   {
     const Network & n = p.second;
-    string br_id = fmt::format("mrtb-vbr-{}", bridgeId.get(n.id().str()));
+    string br_id = fmt::format("mrtb-vbr-{}", bridgeId.get(n.id()));
     string cmd = fmt::format("ovs-vsctl del-br {}", br_id);
     CmdResult cr = exec(cmd);
     if(cr.code != 0) execFail(cr, "failed to terminate network bridge "+br_id);
 
-    bridgeId.erase(n.id().str());
+    bridgeId.erase(n.id());
     
-    //TODO using link interface
-    /*
-    for(const Neighbor & nbr : n.connections())
+    for(auto & p : bp.connectedComputers(n))
     {
-      if(nbr.kind == Neighbor::Kind::Computer)
-      {
-        vhostId.erase(nbr.id); 
-      }
+      vhostId.erase(p.second.mac());
     }
-    */
   }
 }
 
@@ -675,10 +656,10 @@ http::Response info(Json j)
   LOG(INFO) << "info request";
 
   //extract request parameters
-  string bpid;
+  Uuid bpid;
   try
   {
-    bpid = extract(j, "bpid", "info-request");
+    bpid = Uuid::fromJson(extract(j, "bpid", "info-request"));
   }
   catch(out_of_range &e) { return badRequest("info", j, e); }
 
@@ -692,7 +673,7 @@ http::Response info(Json j)
   catch(out_of_range)
   {
     Json msg;
-    msg["error"] = "bpid "+bpid+" is not being materialized here";
+    msg["error"] = "bpid "+bpid.str()+" is not being materialized here";
 
     return http::Response{
       http::Status::BadRequest(),

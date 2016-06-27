@@ -25,6 +25,7 @@ cmake \
   -DCMAKE_CXX_COMPILER=clang++ \
   -DCMAKE_C_COMPILER=clang \
   -DCMAKE_CXX_FLAGS="$cxxflags" \
+  -DBUILD_SHARED_LIBS=ON \
   .. \
   -G Ninja
 

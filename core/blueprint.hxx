@@ -25,6 +25,7 @@ namespace marina
       //types
       using ComputerMap = std::unordered_map<Uuid, Computer, UuidHash, UuidCmp>;
       using NetworkMap = std::unordered_map<Uuid, Network, UuidHash, UuidCmp>;
+      using ComputerEndpoint = std::pair<Computer, Interface>;
 
       //ctors
       Blueprint(std::string);
@@ -33,47 +34,38 @@ namespace marina
       std::string name() const;
       Blueprint & name(std::string);
 
-      //TODO XXX
-      //the project this blueprint is assigned to, may be empty initially
-      std::string project() const;
-      Blueprint & project(std::string);
-
       //universally unique identifier
       Uuid id() const;
 
-      //component constructors
+      //component creation
       Network network(std::string name);
       Computer computer(std::string name);
-
-      ComputerMap & computers() const;
-      NetworkMap & networks() const;
-
-      std::vector<Endpoint> neighbors(const Endpoint &);
       
-      //convenience functions
-      std::vector<Network> connectedNetworks(const Computer);
-      std::vector<Computer> connectedComputers(const Network);
-      Computer & getComputer(std::string name) const;
-      Network & getNetwork(std::string name) const;
-      Network getNetworkById(const Uuid & id) const;
-      Computer getComputerByMac(std::string mac) const;
-
       //component removal
       void removeComputer(std::string name);
       void removeNetwork(std::string name); 
-
+      
       //component connection
       const std::vector<Link> & links() const;
       void connect(std::pair<Computer, Interface>, Network);
       void connect(Network, Network);
 
-      //TODO XXX
-      //embedding
-      Blueprint localEmbedding(std::string host_id);
+      ComputerMap & computers() const;
+      NetworkMap & networks() const;
+
+      std::vector<Endpoint> neighbors(const Endpoint &) const;
+      
+      //convenience functions
+      std::vector<Network> connectedNetworks(const Computer) const;
+      std::vector<ComputerEndpoint> connectedComputers(const Network) const;
+      Computer & getComputer(std::string name) const;
+      Network & getNetwork(std::string name) const;
+      Network getNetworkById(const Uuid & id) const;
+      Computer getComputerByMac(std::string mac) const;
 
       //serialization
-      static Blueprint fromJson(Json);
       Json json() const;
+      static Blueprint fromJson(Json);
 
       Blueprint clone() const;
 
@@ -196,12 +188,14 @@ namespace marina
   class Network
   {
     public:
+      /*
       struct EmbeddingInfo
       {
         // vxlan network identifier
         size_t vni{0};
         std::unordered_set<std::string> switches;
       };
+      */
 
       Network(std::string);
       static Network fromJson(Json);
@@ -221,12 +215,10 @@ namespace marina
       const Latency latency() const;
       Network & latency(Latency);
 
-      //std::string guid() const;
       Uuid id() const;
 
-      //const std::vector<Neighbor> & connections() const;
-
-      EmbeddingInfo & einfo() const;
+      //TODO: XXX
+      //EmbeddingInfo & einfo() const;
 
       Json json() const;
       Network clone() const;
@@ -327,6 +319,7 @@ namespace marina
   class Computer
   {
     public:
+      /*
       struct EmbeddingInfo
       {
         enum class LaunchState { None, Queued, Launching, Up };
@@ -341,6 +334,7 @@ namespace marina
 
         Json json();
       };
+      */
 
       Computer(std::string name);
       static Computer fromJson(Json);
@@ -376,8 +370,8 @@ namespace marina
       Interface getInterfaceByMac(std::string) const;
 
       //embedding info
-      EmbeddingInfo & embedding() const;
-      Computer & embedding(EmbeddingInfo);
+      //EmbeddingInfo & embedding() const;
+      //Computer & embedding(EmbeddingInfo);
 
       HwSpec hwspec() const;
 

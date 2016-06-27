@@ -18,6 +18,7 @@ add_library( marina-core
   util.cxx
   embed.cxx
   compilation.cxx
+  materialization.cxx
 )
 
 add_library( marina-netlink

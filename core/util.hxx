@@ -45,9 +45,12 @@ struct UuidCmp
 {
   bool operator()(const Uuid &a, const Uuid &b) const
   {
-    return uuid_compare(a.id, b.id);
+    return uuid_compare(a.id, b.id) == 0;
   }
 };
+
+template < typename T >
+using UuidMap = std::unordered_map<Uuid, T, UuidHash, UuidCmp>;
 
 template <class T, class F>
 inline
@@ -121,7 +124,7 @@ struct CmdResult
 
 CmdResult exec(std::string cmd);
 
-template <class Key, class Value>
+template <class Key, class Value, class ...TT>
 class LinearIdCacheMap
 {
   public:
@@ -158,7 +161,7 @@ class LinearIdCacheMap
     std::mutex mtx_;
     std::unique_lock<std::mutex> lk_{mtx_, std::defer_lock_t{}};
     Value v_{};
-    std::unordered_map<Key, Value> m_;
+    std::unordered_map<Key, Value, TT...> m_;
 };
 
 struct RtReq

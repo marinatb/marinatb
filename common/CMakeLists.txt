@@ -9,22 +9,8 @@
 
 add_subdirectory(net)
 
-
-add_library( marinatb-common version.cxx $<TARGET_OBJECTS:marinatb-common-net>)
+#add_library( marinatb-common version.cxx $<TARGET_OBJECTS:marinatb-common-net>)
+add_library( marinatb-common version.cxx )
 target_link_libraries( marinatb-common
-  proxygenlib
-  #proxygenhttpserver
-  wangle
-  folly
-  double-conversion
-  z
-  ssl
-  crypto
-  dl
-  cap
-  event
-  gflags
-  glog
-  c++abi
-  pthread
+  marinatb-common-net
 )

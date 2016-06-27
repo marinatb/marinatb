@@ -18,14 +18,14 @@ namespace std
   template<>
   struct hash<marina::Switch>
   {
-    size_t operator() (const marina::Switch & s);
+    size_t operator() (const marina::Switch & s) const;
   };
 
   // Host set machinery
   template<>
   struct hash<marina::Host>
   {
-    size_t operator() (const marina::Host & c);
+    size_t operator() (const marina::Host & c) const;
   };
 }
 
@@ -77,8 +77,8 @@ namespace marina {
       Switch sw(std::string);
       Host host(std::string);
 
-      HostSet connectedHosts(const Switch s);
-      SwitchSet connectedSwitches(const Host h);
+      HostSet connectedHosts(const Switch s) const;
+      SwitchSet connectedSwitches(const Host h) const;
 
       void removeSw(std::string);
       void removeHost(std::string);

@@ -10,6 +10,8 @@ set( CMAKE_C_COMPILER /usr/local/bin/clang )
 
 project(marinatb)
 
+set(BUILD_SHARED_LIBS ON)
+
 include_directories(
   /usr/local/include/c++/v1 
   /usr/local/include/bsoncxx/v_noabi
@@ -27,23 +29,23 @@ set(CMAKE_MODULE_PATH
 set( CMAKE_C_FLAGS
   "${CMAKE_C_FLAGS} \
   -std=c11 \
-  -Wall -Wextra " )
+  -Wall -Wextra -fPIC" )
 
 set( CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3")
 
 set( CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} \
-  -g -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer" )
+  -g -O0 -fno-optimize-sibling-calls -fno-omit-frame-pointer" )
 
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
   -g -std=c++1z -stdlib=libc++ \
   -Wall -Wextra \
-  -fdiagnostics-color=always" )
+  -fdiagnostics-color=always -fPIC" )
 
 set( CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} \
   -O3" )
 
 set( CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} \
-  -g -O1 -fno-optimize-sibling-calls -fno-omit-frame-pointer" )
+  -g -O0 -fno-optimize-sibling-calls -fno-omit-frame-pointer" )
 
 include_directories(
   "${marinatb_SOURCE_DIR}"

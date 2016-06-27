@@ -1,42 +1,52 @@
-#ifndef DNA_ENV_EMBED
-#define DNA_ENV_EMBED
+#ifndef MARINATB_EMBED_HXX
+#define MARINATB_EMBED_HXX
 
 #include <vector>
 #include "topo.hxx"
 
 namespace marina {
 
-/*
- * Embedding Chart
- * ---------------
- *
- * 
- *
- */
-
 struct HostEmbedding;
 struct SwitchEmbedding;
+struct Load;
+struct LoadVector;
 
-struct HE_Hash
+struct EChart
 {
-  size_t operator() (const HostEmbedding &);
+  EChart(const TestbedTopology);
+
+  std::unordered_map<Uuid, HostEmbedding, UuidHash, UuidCmp> hmap;
+  std::unordered_map<Uuid, SwitchEmbedding, UuidHash, UuidCmp> smap;
+
+  HostEmbedding getEmbedding(Computer);
+  std::vector<SwitchEmbedding> getEmbedding(Network);
+
+  std::string overview();
 };
 
-struct HE_Cmp
+EChart embed(Blueprint, EChart, TestbedTopology);
+EChart unembed(Blueprint, EChart);
+
+struct HostEmbedding
 {
-  bool operator() (const HostEmbedding &, const HostEmbedding &);
+  HostEmbedding(Host);
+
+  Host host;
+  std::unordered_map<Uuid, Computer, UuidHash, UuidCmp> machines;
+
+  LoadVector load() const;
+  HostEmbedding operator+(Computer);
+  HostEmbedding operator-(Computer);
 };
 
-struct SE_Hash
+struct SwitchEmbedding
 {
-  size_t operator() (const SwitchEmbedding &);
+  SwitchEmbedding(Switch s);
+
+  Switch sw;
+  std::unordered_map<Uuid, Network, UuidHash, UuidCmp> networks;
 };
 
-struct SE_Cmp
-{
-  bool operator() (const SwitchEmbedding &, const SwitchEmbedding &);
-};
-  
 struct Load
 {
   Load() = default;
@@ -60,7 +70,7 @@ struct LoadVector
 
   bool overloaded() const;
   HwSpec used(),
-          total();
+         total();
 
   double norm(),
           inf_norm(),
@@ -72,42 +82,7 @@ struct LoadVector
 
 LoadVector operator + (LoadVector, LoadVector);
 
-struct HostEmbedding
-{
-  HostEmbedding(Host);
-
-  Host host;
-  std::unordered_map<Uuid, Computer, UuidHash, UuidCmp> machines;
-
-  LoadVector load() const;
-  HostEmbedding operator+(Computer);
-};
-
-struct SwitchEmbedding
-{
-  SwitchEmbedding(Switch s);
-
-  Switch sw;
-  std::unordered_map<Uuid, Network, UuidHash, UuidCmp> networks;
-};
-
-struct EChart
-{
-  EChart(const TestbedTopology);
-  std::unordered_set<HostEmbedding, HE_Hash, HE_Cmp> hmap;
-  std::unordered_set<SwitchEmbedding, SE_Hash, SE_Cmp> smap;
-
-  HostEmbedding getEmbedding(Computer);
-  std::vector<SwitchEmbedding> getEmbedding(Network);
-
-  std::string overview();
-};
-
-EChart embed(Blueprint, EChart, TestbedTopology);
-EChart unembed(Blueprint, EChart);
 
 }
-
-
 
 #endif
