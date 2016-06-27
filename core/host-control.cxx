@@ -448,8 +448,8 @@ void createNetworkBridge(const Network & n)
     "options:remote_ip={ip} options:key={vni}",
     fmt::arg("id", br_id),
     fmt::arg("vxid", vx_id),
-    fmt::arg("ip", remote_ip),
-    fmt::arg("vni", n.einfo().vni)
+    fmt::arg("ip", remote_ip)
+    //fmt::arg("vni", n.einfo().vni) TODO oldmuffins
   );
 
   cr = exec(cmd);

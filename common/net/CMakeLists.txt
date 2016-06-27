@@ -6,10 +6,28 @@
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-add_library( marinatb-common-net OBJECT
+add_library( marinatb-common-net
   http_request.cxx
   http_server.cxx
   proto.cxx
   glog.cxx
+)
+
+target_link_libraries( marinatb-common-net
+  proxygenlib
+  proxygenhttpserver
+  wangle
+  folly
+  double-conversion
+  z
+  ssl
+  crypto
+  dl
+  cap
+  event
+  gflags
+  glog
+  c++abi
+  pthread
 )
 

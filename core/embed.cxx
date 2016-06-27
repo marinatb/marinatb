@@ -158,27 +158,6 @@ LoadVector HostEmbedding::load() const
   return v;
 }
 
-  
-size_t HE_Hash::operator() (const HostEmbedding &h) const
-{
-  return HostSetHash{}(h.host);
-}
-  
-bool HE_Cmp::operator() (const HostEmbedding &a, const HostEmbedding &b) const
-{
-  return HostSetCMP{}(a.host, b.host);
-}
-  
-size_t SE_Hash::operator() (const SwitchEmbedding &s) const
-{
-  return SwitchSetHash{}(s.sw);
-}
-  
-bool SE_Cmp::operator() (const SwitchEmbedding &a, const SwitchEmbedding &b) const
-{
-  return SwitchSetCMP{}(a.sw, b.sw);
-}
-
 HostEmbedding HostEmbedding::operator+(Computer c)
 {
   HostEmbedding x = *this;
@@ -204,15 +183,17 @@ SwitchEmbedding::SwitchEmbedding(Switch s)
 //EChart ----------------------------------------------------------------------
 EChart::EChart(const TestbedTopology tt)
 {
-  for(auto h : tt.hosts()) hmap.emplace(h.second);
-  for(auto s : tt.switches()) smap.emplace(s.second);
+  for(auto h : tt.hosts()) hmap.insert_or_assign(h.second.id(), h.second);
+  for(auto s : tt.switches()) smap.insert_or_assign(s.second.id(), s.second);
 }
 
 string EChart::overview()
 {
   stringstream ss;
-  for(auto h : hmap)
+  for(const auto & p : hmap)
   {
+    const auto &h  = p.second;
+
     ss <<
       h.host.name() 
       << " " << h.machines.size() 
@@ -224,8 +205,9 @@ string EChart::overview()
     }
   }
 
-  for(auto s : smap)
+  for(const auto & p : smap)
   {
+    const auto & s = p.second;
     ss <<
       s.sw.name() << " " << s.networks.size() << endl;
   }
@@ -236,12 +218,13 @@ string EChart::overview()
 HostEmbedding EChart::getEmbedding(Computer c)
 {
   auto i = std::find_if(hmap.begin(), hmap.end(),
-      [c](auto h)
+      [c](const auto & p)
       {
+        const auto &h = p.second;
         return h.machines.find(c.id()) != h.machines.end();
       });
 
-  if(i != hmap.end()) return *i;
+  if(i != hmap.end()) return i->second;
   else throw out_of_range{c.name()+"("+c.id().str()+") not found in echart"};
 }
 
@@ -249,8 +232,9 @@ vector<SwitchEmbedding> EChart::getEmbedding(Network n)
 {
   vector<SwitchEmbedding> ses;
 
-  for(auto se : smap)
+  for(const auto & p : smap)
   {
+    const auto & se = p.second;
     if(se.networks.find(n.id()) != se.networks.end()) ses.push_back(se);
   }
 
@@ -304,11 +288,11 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
   //reverse the order for end popping
   reverse(cs.begin(), cs.end());
 
-  auto aggLoad = [](const auto & hosts, const auto & hmap)
+  auto aggLoad = [](const auto & hosts)
   {
     double agg = 
     hosts
-    | map<vector>([hmap](const auto & x)
+    | map<vector>([](const auto & x)
       {
         return x.load().free_norm();
       })
@@ -319,20 +303,21 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
 
   //sort the switches based on aggregate load
   auto sws = e.smap
-    | map<vector>([tt,e](const auto & x)
+    | map<vector>([tt,e](const auto & p)
       {
+        const auto & x = p.second;
         return make_pair(
             x, 
             tt.connectedHosts(x.sw) 
-            | map<vector>([e](const auto &x)
+            | map<vector>([e](const auto &y) 
               { 
-                return *e.hmap.find(HostEmbedding{x}); 
+                return e.hmap.find(y.id())->second; 
               })
           );
       })
     | sort([e, aggLoad](const auto & x, const auto & y)
       { 
-        return aggLoad(x.second, e.hmap) < aggLoad(y.second, e.hmap); 
+        return aggLoad(x.second) < aggLoad(y.second); 
       });
 
   //proceed with the embedding in the above switch sorted order
@@ -349,8 +334,7 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
       auto & chosen = p.second.front();
       size_t before = cs.size();
       pack(chosen, cs);
-      e.hmap.erase(chosen);
-      e.hmap.insert(chosen);
+      e.hmap.insert_or_assign(chosen.host.id(), chosen);
       size_t after = cs.size();
       if(before == after) break;
     }
@@ -360,14 +344,14 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
 
   for(auto nw : b.networks())
   {
-    unordered_map<Switch, size_t, SwitchSetHash, SwitchSetCMP> swc;
+    unordered_map<Uuid, size_t, UuidHash, UuidCmp> swc;
     auto cxs = b.connectedComputers(nw.second);
     for(const auto & p : cxs)
     {
       const Computer & c = p.first;
       auto he = e.getEmbedding(c);
       auto sws = tt.connectedSwitches(he.host);
-      for(auto s : sws) swc[s]++;
+      for(auto s : sws) swc[s.id()]++;
     }
 
     for(auto p : swc)
@@ -376,12 +360,11 @@ EChart marina::embed(Blueprint b, EChart e, TestbedTopology tt)
       {
         auto i = e.smap.find(p.first);
         if(i == e.smap.end()) 
-          throw runtime_error{"unknown switch: " + p.first.name()};
+          throw runtime_error{"unknown switch id: " + p.first.str()};
 
-        SwitchEmbedding swe = *i;
+        SwitchEmbedding swe = i->second;
         swe.networks.insert_or_assign(nw.second.id(), nw.second);
-        e.smap.erase(swe);
-        e.smap.insert(swe);
+        e.smap.insert_or_assign(swe.sw.id(), swe);
       }
     }
   }
@@ -395,8 +378,7 @@ EChart marina::unembed(Blueprint bp, EChart ec)
   {
     auto e = ec.getEmbedding(c.second);
     e.machines.erase(c.second.id());
-    ec.hmap.erase(e);
-    ec.hmap.insert(e);
+    ec.hmap.insert_or_assign(e.host.id(), e);
   }
   
   for(const auto & n : bp.networks())
@@ -405,8 +387,7 @@ EChart marina::unembed(Blueprint bp, EChart ec)
     for(auto e : es) 
     {
       e.networks.erase(n.second.id());
-      ec.smap.erase(e);
-      ec.smap.insert(e);
+      ec.smap.insert_or_assign(e.sw.id(), e);
     }
   }
 

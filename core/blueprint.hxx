@@ -34,11 +34,6 @@ namespace marina
       std::string name() const;
       Blueprint & name(std::string);
 
-      //TODO XXX
-      //the project this blueprint is assigned to, may be empty initially
-      //std::string project() const;
-      //Blueprint & project(std::string);
-
       //universally unique identifier
       Uuid id() const;
 
@@ -68,13 +63,9 @@ namespace marina
       Network getNetworkById(const Uuid & id) const;
       Computer getComputerByMac(std::string mac) const;
 
-      //TODO XXX
-      //embedding
-      //Blueprint localEmbedding(std::string host_id);
-
       //serialization
-      static Blueprint fromJson(Json);
       Json json() const;
+      static Blueprint fromJson(Json);
 
       Blueprint clone() const;
 
@@ -197,12 +188,14 @@ namespace marina
   class Network
   {
     public:
+      /*
       struct EmbeddingInfo
       {
         // vxlan network identifier
         size_t vni{0};
         std::unordered_set<std::string> switches;
       };
+      */
 
       Network(std::string);
       static Network fromJson(Json);
@@ -225,7 +218,7 @@ namespace marina
       Uuid id() const;
 
       //TODO: XXX
-      EmbeddingInfo & einfo() const;
+      //EmbeddingInfo & einfo() const;
 
       Json json() const;
       Network clone() const;

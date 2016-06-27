@@ -62,7 +62,7 @@ namespace marina
     Latency latency{0_ms};
     IpV4Address ipv4space{"10.10.0.0", 16};
     Uuid id;
-    Network::EmbeddingInfo einfo;
+    //Network::EmbeddingInfo einfo;
   };
 
   struct Computer_
@@ -684,10 +684,12 @@ Uuid Network::id() const
   return _->id;
 }
 
+/*
 Network::EmbeddingInfo & Network::einfo() const
 {
   return _->einfo;
 }
+*/
 
 Network Network::fromJson(Json j)
 {
@@ -701,6 +703,7 @@ Network Network::fromJson(Json j)
   Json ipv4_ = extract(j, "ipv4", "network");
   n._->ipv4space = IpV4Address::fromJson(ipv4_);
 
+  /*
   Json einfo = extract(j, "einfo", "network");
   n._->einfo.vni = extract(einfo, "vni", "einfo");
   Json switches = extract(einfo, "switches", "network:einfo");
@@ -709,6 +712,7 @@ Network Network::fromJson(Json j)
     string s = sw;
     n._->einfo.switches.insert(s);
   }
+  */
 
   return n;
 }
@@ -721,8 +725,8 @@ Json Network::json() const
   j["capacity"] = capacity().json();
   j["ipv4"] = ipv4().json();
   j["id"] = _->id.json();
-  j["einfo"]["vni"] = _->einfo.vni;
-  j["einfo"]["switches"] = _->einfo.switches;
+  //j["einfo"]["vni"] = _->einfo.vni;
+  //j["einfo"]["switches"] = _->einfo.switches;
   return j;
 }
 
@@ -732,7 +736,7 @@ Network Network::clone() const
   n._->latency = _->latency;
   n._->bandwidth = _->bandwidth;
   n._->id = _->id;
-  n._->einfo = _->einfo;
+  //n._->einfo = _->einfo;
   return n;
 }
   

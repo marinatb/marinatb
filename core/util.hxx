@@ -49,6 +49,9 @@ struct UuidCmp
   }
 };
 
+template < typename T >
+using UuidMap = std::unordered_map<Uuid, T, UuidHash, UuidCmp>;
+
 template <class T, class F>
 inline
 std::vector<Json> jtransform(T && xs, F && f)

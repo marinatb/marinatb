@@ -8,6 +8,8 @@
 #include "core/topo.hxx"
 #include "core/db.hxx"
 #include "core/util.hxx"
+#include "core/materialization.hxx"
+#include "3p/pipes/pipes.hxx"
 
 using std::string;
 using std::unique_ptr;
@@ -17,9 +19,14 @@ using std::vector;
 using std::exception;
 using std::out_of_range;
 using std::endl;
+using std::lock_guard;
+using std::mutex;
+using std::pair;
+using std::make_pair;
 using wangle::SSLContextConfig;
 using proxygen::HTTPMethod;
 using namespace marina;
+using namespace pipes;
 
 static const string not_implemented{R"({"error": "not implemented"})"};
 
@@ -30,7 +37,8 @@ http::Response list(Json);
 http::Response topo(Json);
 http::Response status(Json);
 
-unique_ptr<DB> db{nullptr};
+static unique_ptr<DB> db{nullptr};
+static MzMap mzm;
 
 int main(int argc, char **argv)
 {
@@ -79,6 +87,8 @@ http::Response construct(Json j)
   {
     // get requested blueprint and hw topology from database
     Blueprint bp = db->fetchBlueprint(project, bpid);
+    Materialization & mzn = mzm.get(bp.id());
+    lock_guard<mutex> lk{mzn.mtx};
     TestbedTopology topo = db->fetchHwTopo();
     EChart ec{topo};
 
@@ -87,7 +97,6 @@ http::Response construct(Json j)
     // this will fill in bp with the materialization details and return a clone 
     // of topo that bas bp emedded inside
 
-    // TODO: xxx
     auto embedding = embed(bp, ec, topo);
     
     //TODO vxlan.vni: this is a centralized database attribute for now
@@ -100,7 +109,7 @@ http::Response construct(Json j)
     {
       Network & n = p.second;
       //setup vxlan virtual network identifier
-      n.einfo().vni = db->newVxlanVni(n.id().str());
+      mzn.networks[n.id()].vni = db->newVxlanVni(n.id().str());
 
       //set interface ip addresses
       IpV4Address a = n.ipv4();
@@ -120,9 +129,35 @@ http::Response construct(Json j)
 
     //TODO: need to get a subset of hosts specific to this blueprint
     //as it is now all hosts will get embedding commands
-    for(const auto & h : embedding.hmap)
+    for(const auto & p : embedding.hmap)
     {
-      //TODO with new embedding code
+      const auto & h = p.second;
+      //vector<pair<Computer, ComputerMzInfo>> host_mz_info;
+      vector<Json> host_mz_info;
+      for(const auto & m : h.machines)
+      {
+        const auto & z = mzn.machines.at(m.first);
+        //host_mz_info.push_back(make_pair(m.second, z));
+        Json j;
+        j["computer"] = m.second.json();
+        j["mz-info"] = z.json();
+        host_mz_info.push_back(j);
+      }
+
+      for(const auto & j : host_mz_info)
+      {
+        replys.push_back(
+          HttpRequest
+          {
+            HTTPMethod::POST,
+            "https://"+h.host.name()+"/construct",
+            j.dump()
+          }
+          .response()
+        );
+      }
+
+      //TODO with new embedding code ^^^ -- in theory done above
       /*
       Blueprint lbp = bp.localEmbedding(h.host.name());
 
@@ -196,8 +231,9 @@ http::Response destruct(Json j)
     unordered_set<string> hosts;
     for(const auto & c : bp.computers()) 
     {
-      for(const auto & h : ec.hmap)
+      for(const auto & p : ec.hmap)
       {
+        const auto & h = p.second;
         if(h.machines.find(c.second.id()) != h.machines.end()) 
           hosts.insert(h.host.name());
       }
@@ -219,7 +255,29 @@ http::Response destruct(Json j)
     for(const string & h : hosts)
     {
       LOG(INFO) << "destructing " << bp.name() << " on " << h;
-      //TODO with new embedding structure
+
+      auto hosts = bp.computers()
+        | map<vector>([](const auto & x) { return x.first.str(); });
+
+      auto nets = bp.networks()
+        | map<vector>([](const auto & x) { return x.first.str(); });
+
+      Json j;
+
+      j["hosts"] = hosts;
+      j["nets"] = nets;
+
+      replys.push_back(
+        HttpRequest
+        {
+          HTTPMethod::POST,
+          "https://"+h+"/destruct",
+          j.dump()
+        }
+        .response()
+      );
+
+      //TODO with new embedding structure ^^ -- in theory done above
       /*
       Blueprint lbp = bp.localEmbedding(h);  
       replys.push_back(
