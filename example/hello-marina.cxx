@@ -26,15 +26,16 @@ BLUEPRINT
     .latency(5_ms)
     .ipv4("10.10.47.0", 24);
 
+
   auto a = comp("a"),
        b = comp("b"),
        c = comp("c")
             .add_ifx("ifx1", 1_gbps)
             .add_ifx("ifx2", 1_gbps);
 
-  bp.connect(a.ifx("ifx0"), lan);
-  bp.connect(b.ifx("ifx0"), lan);
-  bp.connect(c.ifx("ifx0"), lan);
+  bp.connect({a, a.ifx("ifx0")}, lan);
+  bp.connect({b, b.ifx("ifx0")}, lan);
+  bp.connect({c, c.ifx("ifx0")}, lan);
 
   //wan ..........................................
 
@@ -57,14 +58,15 @@ BLUEPRINT
             .latency(14_ms)
             .ipv4("104.7.31.0", 16);
 
-  bp.connect(c.ifx("ifx1"), c_d);
-  bp.connect(d.ifx("ifx0"), c_d);
 
-  bp.connect(c.ifx("ifx2"), c_e);
-  bp.connect(e.ifx("ifx0"), c_e);
+  bp.connect({c, c.ifx("ifx1")}, c_d);
+  bp.connect({d, d.ifx("ifx0")}, c_d);
 
-  bp.connect(d.ifx("ifx1"), d_e);
-  bp.connect(e.ifx("ifx1"), d_e);
+  bp.connect({c, c.ifx("ifx2")}, c_e);
+  bp.connect({e, e.ifx("ifx0")}, c_e);
+
+  bp.connect({d, d.ifx("ifx1")}, d_e);
+  bp.connect({e, e.ifx("ifx1")}, d_e);
 
   return bp;
 }

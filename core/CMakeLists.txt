@@ -38,35 +38,35 @@ target_link_libraries( mac2ifname marina-netlink )
 add_executable( accounts accounts.cxx )
 target_link_libraries( accounts 
   marina-core
-  proxygenhttpserver 
+  marinatb-server
 )
 
 add_executable( access access.cxx )
 target_link_libraries( access 
   marina-core
-  proxygenhttpserver 
+  marinatb-server
 )
 
 add_executable( blueprint blueprint-service.cxx )
 target_link_libraries( blueprint 
   marina-core
-  proxygenhttpserver 
+  marinatb-server
 )
 
 add_executable( materialization materialization-service.cxx )
 target_link_libraries( materialization 
   marina-core
-  proxygenhttpserver 
+  marinatb-server
 )
 
 add_executable( host-control host-control.cxx )
 target_link_libraries( host-control
   marina-core
-  proxygenhttpserver 
+  marinatb-server
 )
 
 add_executable( marina client.cxx )
-target_link_libraries( marina marina-core dl )
+target_link_libraries( marina marina-core marinatb-client dl )
 
 install(TARGETS marina-core accounts access blueprint materialization host-control
   RUNTIME DESTINATION bin

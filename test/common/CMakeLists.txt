@@ -14,6 +14,7 @@ add_executable( run_common_tests
 
 target_link_libraries( run_common_tests
   marinatb-common
+  marinatb-client
 )
 
 add_executable( run_server_tests
@@ -23,6 +24,6 @@ add_executable( run_server_tests
 
 target_link_libraries( run_server_tests
   marinatb-common
-  proxygenhttpserver
+  marinatb-server
 )
 

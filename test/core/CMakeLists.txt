@@ -14,7 +14,7 @@ add_executable( core-test
 )
 
 target_link_libraries( core-test
-  marinatb-common
   marina-core
+  marinatb-client
   marina-test-models
 )

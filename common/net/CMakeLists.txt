@@ -7,15 +7,10 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 add_library( marinatb-common-net
-  http_request.cxx
-  http_server.cxx
   proto.cxx
   glog.cxx
 )
-
 target_link_libraries( marinatb-common-net
-  proxygenlib
-  proxygenhttpserver
   wangle
   folly
   double-conversion
@@ -29,5 +24,21 @@ target_link_libraries( marinatb-common-net
   glog
   c++abi
   pthread
+)
+
+add_library( marinatb-client
+  http_request.cxx
+)
+target_link_libraries( marinatb-client
+  marinatb-common-net
+  proxygenlib
+)
+
+add_library( marinatb-server
+  http_server.cxx
+)
+target_link_libraries( marinatb-server
+  marinatb-client
+  proxygenhttpserver
 )
 
