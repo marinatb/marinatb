@@ -13,7 +13,7 @@ add_executable( run_api_tests
 )
 
 target_link_libraries( run_api_tests
-  marinatb-common
   marina-core
+  marinatb-client
   marina-test-models
 )

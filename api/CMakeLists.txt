@@ -6,4 +6,4 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 add_executable( marina-api api.cxx )
-target_link_libraries( marina-api marinatb-common proxygenhttpserver )
+target_link_libraries( marina-api marinatb-server )
